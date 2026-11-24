@@ -1,4 +1,4 @@
-# ZAR - post-install steps, run by the setup (hidden). One step per call so the setup can show progress.
+﻿# ZAR - post-install steps, run by the setup (hidden). One step per call so the setup can show progress.
 #   -Step python | packages | browser | libreoffice | autostart | start | wallpaper | stop
 param(
     [Parameter(Mandatory = $true)][string]$Step,

@@ -1,4 +1,4 @@
-; ZAR - one-click installer (Inno Setup 6). Built by GitHub Actions (.github/workflows/build-installer.yml).
+﻿; ZAR - one-click installer (Inno Setup 6). Built by GitHub Actions (.github/workflows/build-installer.yml).
 ; Keys come in at build time:  ISCC /DGEMINI_KEY=... /DIMAGE_KEY=... /DSTUDENT=... zar.iss
 ; If GEMINI_KEY is empty the installer asks for it.
 

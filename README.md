@@ -5,7 +5,12 @@ documents & PDF, tasks, web, images and PC control, with an animated desktop (Li
 
 > Keep this repository **private**. Keys are never stored in the repo.
 
-## Make an installer for a student (one click for them)
+## Make an installer for a student — on your own PC (free)
+1. Download this repo (Code → Download ZIP) and extract it.
+2. Double-click **Crear_instalador.bat**. It installs Inno Setup the first time, downloads Python and Lively,
+   asks for the student's name and keys, and leaves `dist\ZAR-Setup-<name>.exe`.
+
+## Make an installer with GitHub Actions (needs Actions billing for private repos)
 1. GitHub → **Actions** → **Build ZAR installer** → **Run workflow**.
 2. Fill in: student name, their Gemini API key, and (optional) an image key
    (a Gemini key with billing, or a Hugging Face token `hf_...`).
