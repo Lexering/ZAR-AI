@@ -1,0 +1,14 @@
+{
+  "AppVersion": "1.0.0.0",
+  "Title": "ZAR",
+  "Thumbnail": "thumbnail.png",
+  "Preview": null,
+  "Desc": "ZAR - your AI study buddy / tu compañero de estudio con IA",
+  "Author": "ZAR",
+  "License": "",
+  "Contact": "",
+  "Type": 1,
+  "FileName": "index.html",
+  "Arguments": null,
+  "IsAbsolutePath": false
+}

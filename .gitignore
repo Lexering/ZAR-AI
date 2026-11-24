@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+logs/
+*.log
+*.bak*
+# Personal data / keys (never in the repo)
+config/*.json
+!config/*.example.json
+config/*.txt
+config/*.pem
+config/vault.enc
+memory/*
+!memory/*.py
+my_voice.pkl
+voices.json
+long_term.json
+alberto_learning.json
+hud_apps.json
+# Build outputs
+dist/
+installer/deps/
+updates/
+backups/

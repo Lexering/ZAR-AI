@@ -1,0 +1,14 @@
+# Files listed here are NEVER overwritten on your colleagues' PCs if they already have them
+# (one path per line, relative to ZAR's folder, with forward slashes).
+# Their config/, memory/, logs/, venv/, voice prints and keys are never touched anyway.
+# Example - uncomment if each colleague has their own personality prompt:
+# core/prompt.txt
+# Each PC keeps its own memory code if it already has it:
+memory/memory_manager.py
+# Each PC keeps its own specialist agents if it already has them:
+agents/agent_manager.py
+agents/investigador.py
+agents/programador.py
+agents/organizador.py
+agents/entretenimiento.py
+agents/seguridad.py

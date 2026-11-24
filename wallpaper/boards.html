@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boards - ZAR</title>
+<style>
+  :root {
+    --night: #030b14; --deep: #071a2b; --panel: #0a2136; --card: #0d2a44; --card-hi: #11365a;
+    --line: rgba(110, 215, 255, .22); --line-soft: rgba(110, 215, 255, .10);
+    --cyan: #6fd8ff; --ice: #dff7ff; --text: #b7dcef; --text-dim: #5f8aa3;
+    --amber: #ffb44d; --alert: #ff6b7d; --green: #6ee7a8; --violet: #b69cff;
+    --font: "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI Semibold", "Arial Narrow", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); font-family: var(--font); }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  button, input, select, textarea { font-family: var(--font); font-size: 14px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--deep);
+           border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  h1 { margin: 0 8px 0 0; font-size: 18px; letter-spacing: .14em; color: var(--ice); font-weight: 600; }
+  h1 span { color: var(--cyan); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .tab { padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--text);
+         cursor: pointer; white-space: nowrap; }
+  .tab[aria-selected="true"] { border-color: var(--cyan); color: var(--ice); background: rgba(16, 58, 90, .6); }
+  .btn { padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--cyan); cursor: pointer; }
+  .btn:hover, .tab:hover { border-color: var(--cyan); }
+  .btn.danger { color: var(--alert); border-color: rgba(255, 107, 125, .35); }
+  .tools { display: flex; gap: 8px; align-items: center; }
+  input.search, select.filter { background: var(--night); color: var(--ice); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; }
+  input.search { width: 180px; }
+  .stats { font-size: 13px; color: var(--text-dim); padding: 6px 16px; border-bottom: 1px solid var(--line-soft); display: flex; gap: 18px; }
+  .stats b { color: var(--ice); font-weight: 600; }
+  .stats .od b { color: var(--alert); }
+  main { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; }
+  .col { flex: 0 0 290px; max-height: 100%; display: flex; flex-direction: column; background: var(--panel);
+         border: 1px solid var(--line-soft); border-radius: 6px; }
+  .col.over { border-color: var(--cyan); background: #0c2840; }
+  .col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+  .col-head .name { flex: 1; color: var(--ice); font-size: 15px; letter-spacing: .04em; cursor: text; outline: none; }
+  .col-head .count { font-size: 12px; color: var(--text-dim); border: 1px solid var(--line-soft); border-radius: 999px; padding: 1px 8px; }
+  .col-head .x { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 16px; padding: 0 2px; }
+  .col-head .x:hover { color: var(--alert); }
+  .cards { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+  .card { background: var(--card); border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan); border-radius: 5px;
+          padding: 9px 10px; cursor: grab; }
+  .card:hover { background: var(--card-hi); border-color: var(--line); }
+  .card.dragging { opacity: .4; }
+  .card.p-high { border-left-color: var(--amber); }
+  .card.p-urgent { border-left-color: var(--alert); }
+  .card.p-low { border-left-color: var(--text-dim); }
+  .card.done .t { text-decoration: line-through; color: var(--text-dim); }
+  .card .t { color: var(--ice); font-size: 15px; line-height: 1.25; word-wrap: break-word; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+  .chip { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-soft); color: var(--text); }
+  .chip.due { color: var(--text); }
+  .chip.due.today { color: var(--amber); border-color: rgba(255, 180, 77, .5); }
+  .chip.due.over { color: var(--alert); border-color: rgba(255, 107, 125, .5); }
+  .chip.tag { color: var(--violet); border-color: rgba(182, 156, 255, .35); }
+  .owner { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+           background: rgba(111, 216, 255, .18); color: var(--ice); border: 1px solid var(--line); }
+  .add { margin: 0 10px 10px; }
+  .add input { width: 100%; background: var(--night); color: var(--ice); border: 1px dashed var(--line); border-radius: 4px; padding: 8px 10px; }
+  .add input:focus { outline: none; border-style: solid; border-color: var(--cyan); }
+  .newcol { flex: 0 0 220px; border: 1px dashed var(--line); border-radius: 6px; padding: 10px; }
+  .newcol input { width: 100%; background: transparent; color: var(--ice); border: 0; padding: 4px; }
+  .newcol input:focus { outline: none; }
+  .empty-state { margin: auto; text-align: center; color: var(--text-dim); max-width: 420px; line-height: 1.5; }
+  .empty-state b { color: var(--ice); }
+  /* edit drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: none; }
+  .scrim.open { display: block; }
+  aside { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: var(--deep); border-left: 1px solid var(--line);
+          transform: translateX(100%); transition: transform .18s ease; display: flex; flex-direction: column; }
+  aside.open { transform: none; }
+  aside .head { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  aside .head h2 { margin: 0; flex: 1; font-size: 15px; letter-spacing: .1em; color: var(--cyan); font-weight: 600; }
+  aside form { padding: 14px 16px; display: grid; gap: 12px; overflow-y: auto; }
+  aside form > *, .row > * { min-width: 0; }
+  label { display: grid; gap: 5px; font-size: 12px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
+  label input, label select, label textarea { background: var(--night); color: var(--ice); border: 1px solid var(--line); border-radius: 4px;
+          padding: 8px 10px; text-transform: none; letter-spacing: 0; font-size: 15px; width: 100%; min-width: 0; }
+  label textarea { min-height: 120px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .actions { display: flex; gap: 8px; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--line); }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--deep); border: 1px solid var(--line);
+           color: var(--ice); padding: 8px 14px; border-radius: 4px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { aside { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>ZAR <span>BOARDS</span></h1>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="tools">
+    <input class="search" id="search" type="search" placeholder="Search tasks…" aria-label="Search tasks">
+    <select class="filter" id="f-owner" aria-label="Filter by owner"><option value="">Everyone</option></select>
+    <button class="btn" id="new-board" type="button">+ Board</button>
+    <button class="btn" id="board-menu" type="button" title="Rename or delete this board">⋯</button>
+  </div>
+</header>
+<div class="stats" id="stats"></div>
+<main id="main"></main>
+<div class="scrim" id="scrim"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="head"><h2>EDIT TASK</h2><button class="btn" id="close" type="button">Close</button></div>
+  <form id="form">
+    <label>Title<input name="title" required></label>
+    <div class="row">
+      <label>Column<select name="column"></select></label>
+      <label>Priority<select name="priority"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+    </div>
+    <div class="row">
+      <label>Owner<input name="owner" placeholder="Who does it"></label>
+      <label>Due date<input name="due" type="date"></label>
+    </div>
+    <label>Tags<input name="tags" placeholder="comma, separated"></label>
+    <label>Notes<textarea name="notes"></textarea></label>
+  </form>
+  <div class="actions">
+    <button class="btn danger" id="delete" type="button">Delete task</button>
+    <button class="btn" id="save" type="button">Save</button>
+  </div>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(() => {
+  const TOKEN = "__HUD_TOKEN__";
+  const $ = id => document.getElementById(id);
+  let data = { boards: [], today: new Date().toISOString().slice(0, 10) };
+  let current = null, editing = null, dragId = null;
+  try { current = localStorage.getItem("alberto-board"); } catch {}
+
+  async function call(op) {
+    const r = await fetch("/boards", { method: op ? "POST" : "GET",
+      headers: { "X-ZAR-Token": TOKEN, "Content-Type": "application/json" }, body: op ? JSON.stringify(op) : undefined });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "error");
+    data = d; render(); return d;
+  }
+  const op = (o, msg) => call(o).then(() => msg && toast(msg)).catch(() => toast("ZAR is offline"));
+  function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 1800); }
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const board = () => data.boards.find(b => b.id === current) || data.boards[0];
+  const doneCol = b => b.columns.find(c => /^(done|hecho|terminado|completado|finished|completed)$/i.test(c)) || b.columns[b.columns.length - 1];
+  function dueInfo(due) {
+    if (!due) return null;
+    const diff = Math.round((new Date(due) - new Date(data.today)) / 86400000);
+    const label = diff < 0 ? `${-diff}d overdue` : diff === 0 ? "Today" : diff === 1 ? "Tomorrow"
+                : new Date(due + "T12:00").toLocaleDateString([], { day: "numeric", month: "short" });
+    return { label, cls: diff < 0 ? "over" : diff === 0 ? "today" : "" };
+  }
+  const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+
+  function render() {
+    const b = board();
+    if (b) current = b.id;
+    try { if (current) localStorage.setItem("alberto-board", current); } catch {}
+    $("tabs").innerHTML = data.boards.map(x =>
+      `<button class="tab" role="tab" type="button" data-id="${x.id}" aria-selected="${x.id === current}">${esc(x.name)}</button>`).join("");
+    $("tabs").querySelectorAll(".tab").forEach(t => t.onclick = () => { current = t.dataset.id; render(); });
+    const main = $("main");
+    if (!b) {
+      main.innerHTML = `<div class="empty-state"><b>No boards yet.</b><br>Click <b>+ Board</b>, or tell ZAR:<br>“Create a board called Virel Shop”</div>`;
+      $("stats").innerHTML = ""; return;
+    }
+    const owners = [...new Set(data.boards.flatMap(x => x.tasks.map(t => t.owner)).filter(Boolean))].sort();
+    const fo = $("f-owner"), keep = fo.value;
+    fo.innerHTML = `<option value="">Everyone</option>` + owners.map(o => `<option>${esc(o)}</option>`).join("");
+    fo.value = owners.includes(keep) ? keep : "";
+    const q = $("search").value.trim().toLowerCase(), who = fo.value;
+    const visible = t => (!q || (t.title + " " + t.notes + " " + t.tags.join(" ")).toLowerCase().includes(q)) && (!who || t.owner === who);
+    const dc = doneCol(b);
+    const open = b.tasks.filter(t => t.column !== dc);
+    const over = open.filter(t => t.due && t.due < data.today).length;
+    const today = open.filter(t => t.due === data.today).length;
+    $("stats").innerHTML = `<span><b>${open.length}</b> open</span><span><b>${b.tasks.length - open.length}</b> done</span>` +
+      `<span><b>${today}</b> due today</span><span class="od"><b>${over}</b> overdue</span>`;
+    main.innerHTML = b.columns.map(c => {
+      const cards = b.tasks.filter(t => t.column === c && visible(t));
+      return `<section class="col" data-col="${esc(c)}">
+        <div class="col-head"><span class="name" contenteditable="true" spellcheck="false" data-old="${esc(c)}">${esc(c)}</span>
+          <span class="count">${cards.length}</span><button class="x" type="button" title="Delete column" data-del="${esc(c)}">×</button></div>
+        <div class="cards">${cards.map(t => {
+          const d = dueInfo(t.due);
+          return `<article class="card p-${t.priority}${t.column === dc ? " done" : ""}" draggable="true" data-id="${t.id}" tabindex="0">
+            <div class="t">${esc(t.title)}</div>
+            <div class="meta">${d ? `<span class="chip due ${t.column === dc ? "" : d.cls}">${t.column === dc ? new Date(t.due + "T12:00").toLocaleDateString([], { day: "numeric", month: "short" }) : d.label}</span>` : ""}
+              ${t.priority === "high" || t.priority === "urgent" ? `<span class="chip">${t.priority}</span>` : ""}
+              ${t.tags.map(g => `<span class="chip tag">${esc(g)}</span>`).join("")}
+              ${t.owner ? `<span class="owner" title="${esc(t.owner)}">${esc(initials(t.owner))}</span>` : ""}</div></article>`;
+        }).join("")}</div>
+        <div class="add"><input placeholder="+ Add task" data-col="${esc(c)}" aria-label="Add task to ${esc(c)}"></div>
+      </section>`;
+    }).join("") + `<div class="newcol"><input id="newcol" placeholder="+ Add column" aria-label="Add column"></div>`;
+
+    main.querySelectorAll(".card").forEach(el => {
+      el.onclick = () => openTask(el.dataset.id);
+      el.onkeydown = e => { if (e.key === "Enter") openTask(el.dataset.id); };
+      el.ondragstart = e => { dragId = el.dataset.id; el.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; };
+      el.ondragend = () => { dragId = null; el.classList.remove("dragging"); };
+    });
+    main.querySelectorAll(".col").forEach(col => {
+      col.ondragover = e => { if (dragId) { e.preventDefault(); col.classList.add("over"); } };
+      col.ondragleave = () => col.classList.remove("over");
+      col.ondrop = e => {
+        e.preventDefault(); col.classList.remove("over");
+        if (!dragId) return;
+        const after = [...col.querySelectorAll(".card")].filter(c => c.dataset.id !== dragId)
+          .findIndex(c => e.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2);
+        op({ op: "move_task", board: b.id, task: dragId, column: col.dataset.col, index: after < 0 ? 9999 : after });
+      };
+    });
+    main.querySelectorAll(".add input").forEach(inp => inp.onkeydown = e => {
+      if (e.key === "Enter" && inp.value.trim()) { op({ op: "add_task", board: b.id, column: inp.dataset.col, title: inp.value.trim() }, "Task added"); }
+    });
+    main.querySelectorAll(".col-head .name").forEach(n => {
+      n.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); n.blur(); } };
+      n.onblur = () => { const v = n.textContent.trim(); if (v && v !== n.dataset.old) op({ op: "rename_column", board: b.id, old: n.dataset.old, name: v }); };
+    });
+    main.querySelectorAll("[data-del]").forEach(x => x.onclick = () => {
+      if (confirm(`Delete column "${x.dataset.del}"? Its tasks move to the first column.`)) op({ op: "delete_column", board: b.id, name: x.dataset.del });
+    });
+    $("newcol").onkeydown = e => { if (e.key === "Enter" && e.target.value.trim()) op({ op: "add_column", board: b.id, name: e.target.value.trim() }); };
+  }
+
+  function openTask(id) {
+    const b = board(), t = b.tasks.find(x => x.id === id);
+    if (!t) return;
+    editing = t.id;
+    const f = $("form");
+    f.column.innerHTML = b.columns.map(c => `<option>${esc(c)}</option>`).join("");
+    f.title.value = t.title; f.column.value = t.column; f.priority.value = t.priority;
+    f.owner.value = t.owner || ""; f.due.value = t.due || ""; f.tags.value = t.tags.join(", "); f.notes.value = t.notes || "";
+    $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false");
+    f.title.focus();
+  }
+  function closeDrawer() { editing = null; $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
+  $("close").onclick = closeDrawer; $("scrim").onclick = closeDrawer;
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+  $("save").onclick = () => {
+    const f = $("form"), b = board();
+    if (!f.title.value.trim()) { f.title.focus(); return; }
+    op({ op: "update_task", board: b.id, task: editing, fields: { title: f.title.value, column: f.column.value, priority: f.priority.value,
+         owner: f.owner.value, due: f.due.value || null, tags: f.tags.value, notes: f.notes.value } }, "Saved");
+    closeDrawer();
+  };
+  $("delete").onclick = () => { if (confirm("Delete this task?")) { op({ op: "delete_task", board: board().id, task: editing }, "Deleted"); closeDrawer(); } };
+  $("new-board").onclick = () => {
+    const name = prompt("Board name:");
+    if (name && name.trim()) call({ op: "create_board", name: name.trim() }).then(d => { current = d.boards[d.boards.length - 1].id; render(); }).catch(() => toast("ZAR is offline"));
+  };
+  $("board-menu").onclick = () => {
+    const b = board(); if (!b) return;
+    const name = prompt(`Rename "${b.name}" (leave empty and press OK to DELETE the board):`, b.name);
+    if (name === null) return;
+    if (name.trim()) op({ op: "rename_board", board: b.id, name: name.trim() }, "Renamed");
+    else if (confirm(`Delete board "${b.name}" and all its tasks?`)) { op({ op: "delete_board", board: b.id }, "Board deleted"); current = null; }
+  };
+  $("search").oninput = render; $("f-owner").onchange = render;
+  call().catch(() => { $("main").innerHTML = `<div class="empty-state"><b>ZAR is offline.</b><br>Start ZAR and reopen this window.</div>`; });
+  setInterval(() => { if (!editing && !dragId && document.activeElement?.tagName !== "INPUT" && !document.activeElement?.isContentEditable) call().catch(() => {}); }, 15000);
+})();
+</script>
+</body>
+</html>

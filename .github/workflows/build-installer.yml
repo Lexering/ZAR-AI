@@ -1,0 +1,91 @@
+name: Build ZAR installer
+
+# Run it from GitHub: Actions -> "Build ZAR installer" -> Run workflow.
+# Fill in the student's name and keys; when it finishes, the .exe is in Releases (and as an artifact).
+on:
+  workflow_dispatch:
+    inputs:
+      student:
+        description: "Student name (shown in the file name and pre-filled in the installer). Empty = generic"
+        required: false
+        default: ""
+      gemini_key:
+        description: "Gemini API key for this student (empty = the installer asks for it)"
+        required: false
+        default: ""
+      image_key:
+        description: "Image key (optional): a Gemini key with billing for images, or a Hugging Face token hf_..."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Hide the keys in the logs
+        shell: pwsh
+        env:
+          K1: ${{ inputs.gemini_key }}
+          K2: ${{ inputs.image_key }}
+        run: |
+          if ($env:K1) { Write-Output "::add-mask::$env:K1" }
+          if ($env:K2) { Write-Output "::add-mask::$env:K2" }
+
+      - uses: actions/checkout@v4
+
+      - name: Download Python and Lively Wallpaper
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force installer/deps, installer/deps/lively | Out-Null
+          $py = "3.12.8"
+          Invoke-WebRequest "https://www.python.org/ftp/python/$py/python-$py-amd64.exe" -OutFile "installer/deps/python-$py-amd64.exe"
+          gh release download --repo rocksdanister/lively --pattern "lively_setup_x86_full_*.exe" --dir installer/deps
+          Get-ChildItem installer/deps -Filter "lively_setup_x86_full_*.exe" | Select-Object -First 1 | Rename-Item -NewName "lively_setup.exe"
+          gh release download --repo rocksdanister/lively --pattern "lively_command_utility.zip" --dir installer/deps
+          if (Test-Path installer/deps/lively_command_utility.zip) {
+            Expand-Archive installer/deps/lively_command_utility.zip -DestinationPath installer/deps/lively -Force
+            Get-ChildItem installer/deps/lively -Recurse -Filter "Livelycu.exe" | Select-Object -First 1 | ForEach-Object {
+              if ($_.DirectoryName -ne (Resolve-Path installer/deps/lively).Path) { Copy-Item "$($_.DirectoryName)\*" installer/deps/lively -Recurse -Force }
+            }
+            Remove-Item installer/deps/lively_command_utility.zip
+          }
+          Get-ChildItem installer/deps -Recurse | Select-Object FullName, Length
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build the installer
+        shell: pwsh
+        env:
+          STUDENT: ${{ inputs.student }}
+          K1: ${{ inputs.gemini_key }}
+          K2: ${{ inputs.image_key }}
+        run: |
+          $student = ($env:STUDENT -replace '[^\p{L}\p{Nd}_-]', '')
+          $ver = Get-Content version.txt -Raw
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp "/DGEMINI_KEY=$($env:K1)" "/DIMAGE_KEY=$($env:K2)" "/DSTUDENT=$student" "/DAPPVER=1.0.$($ver.Trim())" installer/zar.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAR-installer
+          path: dist/*.exe
+
+      - name: Publish as a release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STUDENT: ${{ inputs.student }}
+        run: |
+          $student = ($env:STUDENT -replace '[^\p{L}\p{Nd}_-]', '')
+          $tag = "installer-$(if ($student) { $student.ToLower() } else { 'generic' })-$env:GITHUB_RUN_NUMBER"
+          gh release create $tag (Get-ChildItem dist/*.exe).FullName --title "ZAR installer $(if ($student) { "for $student" } else { '(generic)' }) #$env:GITHUB_RUN_NUMBER" --notes "Download the .exe and send it to the student. It contains their personal key: don't share it publicly."

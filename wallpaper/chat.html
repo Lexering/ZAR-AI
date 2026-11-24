@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAR · Chat</title>
+<style>
+  :root {
+    --night: #030b14; --line: rgba(110,215,255,.22); --line-soft: rgba(110,215,255,.10);
+    --cyan: #6fd8ff; --ice: #dff7ff; --text: #b7dcef; --text-dim: #5f8aa3; --alert: #ff6b7d; --green: #78f0be;
+    --font: "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    display: flex; flex-direction: column; font-family: var(--font); color: var(--text);
+    background: radial-gradient(ellipse 120% 60% at 50% 0%, #0b2a44 0%, var(--night) 70%), var(--night);
+  }
+  header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
+  header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-dim); }
+  header .dot.on { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  header h1 { font-size: 19px; font-weight: 500; color: var(--ice); letter-spacing: .08em; }
+  header .st { margin-left: auto; font-size: 13px; color: var(--text-dim); }
+  main { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  main::-webkit-scrollbar { width: 6px; } main::-webkit-scrollbar-thumb { background: var(--line); }
+  .msg { max-width: 88%; padding: 9px 12px; font-size: 15px; line-height: 1.35; border: 1px solid var(--line-soft); white-space: pre-wrap; word-wrap: break-word; }
+  .msg .who { display: block; font-size: 12px; letter-spacing: .05em; color: var(--text-dim); margin-bottom: 2px; }
+  .msg.user { align-self: flex-end; background: rgba(16,58,90,.55); border-color: var(--line); color: var(--ice); }
+  .msg.ai { align-self: flex-start; background: rgba(5,20,34,.7); }
+  .msg.ai .who { color: var(--cyan); }
+  .msg.err { align-self: flex-start; color: var(--alert); }
+  .empty { margin: auto; text-align: center; color: var(--text-dim); font-size: 15px; line-height: 1.5; }
+  footer { padding: 10px 12px 12px; border-top: 1px solid var(--line-soft); position: relative; }
+  .chip { display: none; align-items: center; gap: 8px; margin-bottom: 8px; padding: 6px 10px; font-size: 14px;
+          border: 1px solid var(--line); background: rgba(10,40,64,.5); color: var(--ice); }
+  .chip.show { display: flex; }
+  .chip img { width: 34px; height: 34px; object-fit: cover; }
+  .chip span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip button { background: none; border: 0; color: var(--text-dim); font-size: 18px; cursor: pointer; }
+  .row { display: flex; gap: 8px; align-items: flex-end; }
+  textarea { flex: 1; min-width: 0; resize: none; height: 44px; max-height: 140px; padding: 11px 12px;
+             font: inherit; font-size: 15px; color: var(--ice); background: rgba(3,14,24,.8);
+             border: 1px solid var(--line); outline: none; }
+  textarea:focus { border-color: var(--cyan); }
+  textarea::placeholder { color: var(--text-dim); }
+  .ibtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; cursor: pointer;
+          background: rgba(10,40,64,.5); border: 1px solid var(--line); color: var(--cyan); }
+  .ibtn:hover { border-color: var(--cyan); background: rgba(16,58,90,.7); }
+  .ibtn:disabled { opacity: .45; cursor: default; }
+  .ibtn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .menu { display: none; position: absolute; left: 12px; bottom: 64px; width: 230px;
+          background: #06182a; border: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  .menu.open { display: block; }
+  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; text-align: left;
+                 font: inherit; font-size: 15px; color: var(--text); background: none; border: 0; cursor: pointer; }
+  .menu button:hover { background: rgba(16,58,90,.6); color: var(--ice); }
+  .menu svg { width: 18px; height: 18px; stroke: var(--cyan); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .menu hr { border: 0; border-top: 1px solid var(--line-soft); }
+  .note { min-height: 18px; margin-top: 6px; font-size: 13px; color: var(--text-dim); }
+  .note.bad { color: var(--alert); }
+  .drop { position: fixed; inset: 0; display: none; place-items: center; background: rgba(3,11,20,.85);
+          border: 2px dashed var(--cyan); color: var(--ice); font-size: 20px; }
+  .drop.show { display: grid; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span><h1>ZAR</h1><span class="st" id="st">Connecting…</span>
+</header>
+<main id="log"><div class="empty">Type a message, or use the clip<br>to attach or create files and images.</div></main>
+<footer>
+  <div class="menu" id="menu" role="menu">
+    <button type="button" data-act="file"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Attach a file</button>
+    <button type="button" data-act="photo"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>Attach a photo</button>
+    <hr>
+    <button type="button" data-act="create_file"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M12 11v6M9 14h6"/></svg>Create a file</button>
+    <button type="button" data-act="create_image"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Create an image</button>
+  </div>
+  <div class="chip" id="chip"><img id="chip-img" alt="" hidden><span id="chip-name"></span><button type="button" id="chip-x" title="Remove">×</button></div>
+  <div class="row">
+    <button class="ibtn" id="clip" type="button" title="Attach or create" aria-haspopup="menu">
+      <svg viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>
+    </button>
+    <textarea id="text" placeholder="Message ZAR…  (Enter to send)" rows="1"></textarea>
+    <button class="ibtn" id="send" type="button" title="Send">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+    </button>
+  </div>
+  <div class="note" id="note"></div>
+  <input type="file" id="pick-file" hidden>
+  <input type="file" id="pick-photo" accept="image/*" hidden>
+</footer>
+<div class="drop" id="drop">Drop to attach</div>
+
+<script>
+(() => {
+  const TOKEN = "__HUD_TOKEN__";
+  const AUTH = { "X-ZAR-Token": TOKEN };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let attached = null, lastKey = "", busy = false;
+
+  function note(text, bad) { $("note").textContent = text || ""; $("note").classList.toggle("bad", !!bad); }
+
+  async function poll() {
+    try {
+      const r = await fetch("/chatlog", { headers: AUTH, cache: "no-store" });
+      const d = await r.json();
+      const on = d.state && d.state !== "OFFLINE";
+      $("dot").classList.toggle("on", !!on);
+      $("st").textContent = { LISTENING: "Listening", SPEAKING: "Speaking", THINKING: "Thinking", MUTED: "Mic muted",
+                              STANDBY: "Standing by", DICTATING: "Dictating" }[d.state] || (on ? d.state : "Offline");
+      const items = d.log || [];
+      const key = JSON.stringify(items.map(x => x.t));
+      if (key !== lastKey) {
+        lastKey = key;
+        const nearBottom = $("log").scrollHeight - $("log").scrollTop - $("log").clientHeight < 80;
+        $("log").innerHTML = items.length ? items.map(x =>
+          `<div class="msg ${x.who}"><span class="who">${x.who === "user" ? "You" : x.who === "err" ? "Alert" : "ZAR"}</span>${esc(x.text)}</div>`
+        ).join("") : `<div class="empty">Type a message, or use the clip<br>to attach or create files and images.</div>`;
+        if (nearBottom) $("log").scrollTop = $("log").scrollHeight;
+      }
+    } catch { $("dot").classList.remove("on"); $("st").textContent = "ZAR is off"; }
+    setTimeout(poll, 1000);
+  }
+
+  function attach(file) {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) { note("That file is over 100 MB.", true); return; }
+    attached = file;
+    $("chip-name").textContent = file.name || "pasted image.png";
+    const img = $("chip-img");
+    if (file.type.startsWith("image/")) { img.src = URL.createObjectURL(file); img.hidden = false; } else { img.hidden = true; }
+    $("chip").classList.add("show");
+    note("Add a message (optional) and press Send.");
+    $("text").focus();
+  }
+  function clearAttach() { attached = null; $("chip").classList.remove("show"); $("pick-file").value = ""; $("pick-photo").value = ""; }
+
+  async function send() {
+    if (busy) return;
+    const text = $("text").value.trim();
+    if (!text && !attached) return;
+    busy = true; $("send").disabled = true;
+    try {
+      let file = "";
+      if (attached) {
+        note("Uploading…");
+        const name = attached.name || `pasted image ${Date.now()}.png`;
+        const up = await fetch("/upload?name=" + encodeURIComponent(name), { method: "POST", headers: AUTH, body: attached });
+        const u = await up.json();
+        if (!u.ok) throw new Error(u.error || "upload failed");
+        file = u.path;
+      }
+      const r = await fetch("/chat", { method: "POST", headers: { ...AUTH, "Content-Type": "application/json" },
+                                      body: JSON.stringify({ text, file }) });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.info || d.error || "not sent");
+      $("text").value = ""; autosize(); clearAttach(); note("");
+    } catch (e) { note("Couldn't send: " + e.message, true); }
+    busy = false; $("send").disabled = false; $("text").focus();
+  }
+
+  async function action(kind) {
+    note(kind === "create_file" ? "ZAR will ask you what file to create…" : "ZAR will ask you what image to create…");
+    try {
+      const r = await fetch("/action?kind=" + kind, { method: "POST", headers: AUTH });
+      if (!(await r.json()).ok) throw new Error();
+      setTimeout(() => note("Answer by voice or type it here."), 2500);
+    } catch { note("ZAR isn't connected right now.", true); }
+  }
+
+  function autosize() { const t = $("text"); t.style.height = "44px"; t.style.height = Math.min(140, t.scrollHeight + 2) + "px"; }
+
+  $("send").addEventListener("click", send);
+  $("text").addEventListener("input", autosize);
+  $("text").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+  $("clip").addEventListener("click", e => { e.stopPropagation(); $("menu").classList.toggle("open"); });
+  document.addEventListener("click", e => { if (!$("menu").contains(e.target)) $("menu").classList.remove("open"); });
+  $("menu").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("menu").classList.remove("open");
+    const a = b.dataset.act;
+    if (a === "file") $("pick-file").click();
+    else if (a === "photo") $("pick-photo").click();
+    else action(a);
+  });
+  $("pick-file").addEventListener("change", e => attach(e.target.files[0]));
+  $("pick-photo").addEventListener("change", e => attach(e.target.files[0]));
+  $("chip-x").addEventListener("click", clearAttach);
+  // paste an image or drop a file anywhere in the window
+  document.addEventListener("paste", e => {
+    const f = [...(e.clipboardData?.files || [])][0];
+    if (f) { e.preventDefault(); attach(f); }
+  });
+  let dragDepth = 0;
+  addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; $("drop").classList.add("show"); });
+  addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("drop").classList.remove("show"); } });
+  addEventListener("dragover", e => e.preventDefault());
+  addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("drop").classList.remove("show"); attach(e.dataTransfer.files[0]); });
+
+  if (new URLSearchParams(location.search).has("menu")) setTimeout(() => $("menu").classList.add("open"), 150);
+  $("text").focus();
+  poll();
+})();
+</script>
+</body>
+</html>
