@@ -68,6 +68,7 @@ if ! "$UV" pip install --python "$PY" -r "$APP/requirements_mac.txt"; then
     [ -n "$pkg" ] && { "$UV" pip install --python "$PY" "$pkg" || echo "FAILED $pkg"; }
   done
 fi
+"$UV" pip install --python "$PY" pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz
 "$PY" -m playwright install chromium || true
 "$PY" -m compileall -q "$APP" >/dev/null 2>&1
 if ! "$PY" -c "import numpy, PyQt6, google.genai"; then
@@ -112,20 +113,29 @@ EOF
 launchctl bootout "gui/$(id -u)/$APP_ID" 2>/dev/null
 launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || launchctl load -w "$PLIST"
 
-# ---------- 7. Animated wallpaper (Plash) ----------
-WP_URL="http://127.0.0.1:5055/ui/index"
-say "Fondo animado: Plash"
-if [ ! -d "/Applications/Plash.app" ]; then
-  open "macappstore://apps.apple.com/app/id1494023538" 2>/dev/null || open "https://apps.apple.com/app/id1494023538"
-fi
-printf "%s" "$WP_URL" | pbcopy
-info "¡$APP_NAME está instalado y arrancando en segundo plano!
+# ---------- 7. Animated wallpaper (built in, no extra app needed) ----------
+say "Poniendo el fondo animado..."
+WPLIST="$HOME/Library/LaunchAgents/$APP_ID.wallpaper.plist"
+cat > "$WPLIST" <<EOF2
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$APP_ID.wallpaper</string>
+  <key>ProgramArguments</key><array><string>$PY</string><string>$APP/mac_wallpaper.py</string></array>
+  <key>WorkingDirectory</key><string>$APP</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>StandardOutPath</key><string>$APP/logs/wallpaper.log</string>
+  <key>StandardErrorPath</key><string>$APP/logs/wallpaper.log</string>
+</dict></plist>
+EOF2
+launchctl bootout "gui/$(id -u)/$APP_ID.wallpaper" 2>/dev/null
+launchctl bootstrap "gui/$(id -u)" "$WPLIST" 2>/dev/null || launchctl load -w "$WPLIST"
 
-FONDO ANIMADO (1 minuto):
-1. Instala Plash (gratis) en la App Store que se acaba de abrir.
-2. Abre Plash → icono en la barra de arriba → Add Website.
-3. En URL pega con Cmd+V (ya está copiado): http://127.0.0.1:5055/ui/index
-4. En Plash activa 'Browsing Mode' para poder pulsar los botones del fondo, y pon 'Reload Interval' en 1 minuto.
+info "¡$APP_NAME está instalado!
+
+Arranca solo en segundo plano cada vez que enciendes el Mac, con su fondo animado.
 
 PERMISOS: cuando macOS lo pida, permite el MICRÓFONO (y Accesibilidad si quieres que controle el Mac).
 Di «$WAKE» para hablar."
