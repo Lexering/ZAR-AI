@@ -46,6 +46,8 @@ switch ($Step) {
                 if ((Pip @('install', $pkg)) -ne 0) { Log "FAILED $pkg" }
             }
         }
+        # precompile everything once so every start is faster
+        & $Py -m compileall -q -j 0 $AppDir (Join-Path $PyDir 'Lib\site-packages') 2>&1 | Select-Object -Last 3 | ForEach-Object { Log $_ }
         & $Py -c "import numpy, PyQt6, google.genai" 2>&1 | ForEach-Object { Log $_ }
         if ($LASTEXITCODE -ne 0) { Log "core packages missing"; exit 1 }
     }
@@ -68,7 +70,10 @@ switch ($Step) {
         $cmd = "`"$Pyw`" `"$(Join-Path $AppDir 'zar_guardian.pyw')`""
         New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
         Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'ZAR' -Value $cmd
-        Log "autostart set"
+        # Windows waits ~10 s before launching startup apps; remove that wait for this user
+        New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize' -Force | Out-Null
+        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize' -Name 'StartupDelayInMSec' -Value 0 -Type DWord
+        Log "autostart set (no startup delay)"
     }
 
     'start' {

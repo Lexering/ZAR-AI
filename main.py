@@ -194,7 +194,7 @@ PRELOAD_VOICE_MODEL = False
 GREET_ON_START      = True
 
 # Ventana: ZAR vive en el fondo del escritorio y en el icono junto al reloj
-START_HIDDEN        = False    # True = start hidden (only the tray icon and the wallpaper)
+START_HIDDEN        = True     # runs in the background like part of the system (tray icon + wallpaper)
 TRAY_ICON           = True     # icono en la bandeja del sistema (mostrar / silenciar / salir)
 MUTE_HOTKEY         = "ctrl+alt+m"   # atajo global para silenciar / activar el micro ("" = desactivado)
 PANIC_HOTKEY        = "ctrl+alt+p"   # atajo de pánico: silencia, arma vigilancia y bloquea el PC ("" = off)
@@ -228,6 +228,7 @@ def _lazy(module: str, attr: str):
 
 # Módulos pesados o lentos de importar: se cargan la primera vez que se usan
 file_processor     = _lazy("actions.file_processor", "file_processor")
+browser_control    = _lazy("actions.browser_control", "browser_control")   # Playwright loads only when used
 flight_finder      = _lazy("actions.flight_finder", "flight_finder")
 screen_process     = _lazy("actions.screen_processor", "screen_process")
 youtube_video      = _lazy("actions.youtube_video", "youtube_video")
@@ -275,7 +276,6 @@ from actions.send_message      import send_message
 from actions.reminder          import reminder
 from actions.computer_settings import computer_settings
 from actions.desktop           import desktop_control
-from actions.browser_control   import browser_control
 from actions.file_controller   import file_controller
 from actions.web_search        import web_search as web_search_action
 from actions.computer_control  import computer_control
