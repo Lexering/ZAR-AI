@@ -109,6 +109,14 @@ switch ($Step) {
         $tool = if ($cu) { $cu } else { $lively }
         Start-Process -FilePath $tool -ArgumentList 'setwp', '--file', "`"$wp`"" -WindowStyle Hidden -Wait
         Log "wallpaper set with $tool"
+        # Lively must also start with Windows (so the animated desktop is there after every reboot)
+        $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+        $already = (Get-ItemProperty -Path $run -ErrorAction SilentlyContinue).PSObject.Properties |
+                   Where-Object { "$($_.Value)" -like '*Lively*' }
+        if (-not $already) {
+            Set-ItemProperty -Path $run -Name 'LivelyWallpaper' -Value "`"$lively`" app --showApp false"
+            Log "Lively autostart set"
+        }
     }
 
     'stop' {
