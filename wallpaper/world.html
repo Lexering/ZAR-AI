@@ -8,9 +8,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --night: #030b14; --deep: #071a2b; --panel: rgba(7, 26, 43, .92);
-    --line: rgba(110, 215, 255, .22); --line-soft: rgba(110, 215, 255, .10);
-    --cyan: #6fd8ff; --ice: #dff7ff; --text: #b7dcef; --text-dim: #5f8aa3;
+    --night: #120a10; --deep: #1c1018; --panel: rgba(38, 22, 32, .92);
+    --line: rgba(236, 190, 170, .22); --line-soft: rgba(236, 190, 170, .10);
+    --cyan: #ecbea9; --ice: #fbefe7; --text: #d9c2b8; --text-dim: #957c76;
     --amber: #ffb44d; --alert: #ff6b7d; --green: #6ee7a8; --violet: #b69cff; --orange: #ff8f4d;
     --font: "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI Semibold", "Arial Narrow", "Segoe UI", sans-serif;
   }
@@ -32,7 +32,7 @@
   button { font-family: var(--font); }
   .btn { background: transparent; color: var(--cyan); border: 1px solid var(--line); border-radius: 4px;
          padding: 6px 12px; font-size: 14px; cursor: pointer; }
-  .btn:hover { border-color: var(--cyan); background: rgba(16, 58, 90, .6); }
+  .btn:hover { border-color: var(--cyan); background: rgba(70, 36, 52, .6); }
   #map { height: 100%; background: var(--night); }
   aside { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
@@ -48,7 +48,7 @@
   .list { overflow-y: auto; flex: 1; min-height: 0; }
   .ev { display: grid; grid-template-columns: 10px 1fr; column-gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft);
         cursor: pointer; }
-  .ev:hover { background: rgba(16, 58, 90, .45); }
+  .ev:hover { background: rgba(70, 36, 52, .45); }
   .ev i { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; }
   .ev .t { color: var(--ice); font-size: 15px; line-height: 1.25; }
   .ev .m { color: var(--text-dim); font-size: 12px; margin-top: 3px; }
@@ -60,7 +60,7 @@
   .leaflet-popup-content b { color: var(--ice); }
   .leaflet-popup-content a { color: var(--cyan); }
   .leaflet-container a.leaflet-popup-close-button { color: var(--text-dim); }
-  .leaflet-control-attribution { background: rgba(3, 11, 20, .7) !important; color: var(--text-dim) !important; }
+  .leaflet-control-attribution { background: rgba(18, 10, 16, .7) !important; color: var(--text-dim) !important; }
   .leaflet-control-attribution a { color: var(--text-dim) !important; }
   body.osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.4); }
   .pulse { border-radius: 50%; animation: pulse 1.8s ease-out infinite; }
@@ -100,7 +100,7 @@
     fire:       { label: "Wildfires",   color: "#ff8f4d" },
     storm:      { label: "Storms",      color: "#b69cff" },
     volcano:    { label: "Volcanoes",   color: "#ff4d6d" },
-    news:       { label: "News",        color: "#6fd8ff" },
+    news:       { label: "News",        color: "#ecbea9" },
   };
   const groupOf = t => ({ earthquake: "earthquake", tsunami: "earthquake", wildfire: "fire", storm: "storm",
                           cyclone: "storm", volcano: "volcano", news: "news" }[t] || "disaster");
@@ -134,7 +134,7 @@
     return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
   }
   function popup(e) {
-    return `<b>${esc(e.title)}</b><br><span style="color:#5f8aa3">${esc(e.source)} · ${ago(e.ts)}</span>` +
+    return `<b>${esc(e.title)}</b><br><span style="color:#957c76">${esc(e.source)} · ${ago(e.ts)}</span>` +
            (e.detail ? `<br>${esc(e.detail)}` : "") +
            (e.url ? `<br><a href="${esc(e.url)}" target="_blank" rel="noopener">Open source ↗</a>` : "");
   }

@@ -6,9 +6,9 @@
 <title>Boards - ZAR</title>
 <style>
   :root {
-    --night: #030b14; --deep: #071a2b; --panel: #0a2136; --card: #0d2a44; --card-hi: #11365a;
-    --line: rgba(110, 215, 255, .22); --line-soft: rgba(110, 215, 255, .10);
-    --cyan: #6fd8ff; --ice: #dff7ff; --text: #b7dcef; --text-dim: #5f8aa3;
+    --night: #120a10; --deep: #1c1018; --panel: #24131d; --card: #2c1824; --card-hi: #3a2030;
+    --line: rgba(236, 190, 170, .22); --line-soft: rgba(236, 190, 170, .10);
+    --cyan: #ecbea9; --ice: #fbefe7; --text: #d9c2b8; --text-dim: #957c76;
     --amber: #ffb44d; --alert: #ff6b7d; --green: #6ee7a8; --violet: #b69cff;
     --font: "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI Semibold", "Arial Narrow", "Segoe UI", sans-serif;
   }
@@ -23,7 +23,7 @@
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .tab { padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--text);
          cursor: pointer; white-space: nowrap; }
-  .tab[aria-selected="true"] { border-color: var(--cyan); color: var(--ice); background: rgba(16, 58, 90, .6); }
+  .tab[aria-selected="true"] { border-color: var(--cyan); color: var(--ice); background: rgba(70, 36, 52, .6); }
   .btn { padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--cyan); cursor: pointer; }
   .btn:hover, .tab:hover { border-color: var(--cyan); }
   .btn.danger { color: var(--alert); border-color: rgba(255, 107, 125, .35); }
@@ -36,7 +36,7 @@
   main { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; }
   .col { flex: 0 0 290px; max-height: 100%; display: flex; flex-direction: column; background: var(--panel);
          border: 1px solid var(--line-soft); border-radius: 6px; }
-  .col.over { border-color: var(--cyan); background: #0c2840; }
+  .col.over { border-color: var(--cyan); background: #2a1622; }
   .col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
   .col-head .name { flex: 1; color: var(--ice); font-size: 15px; letter-spacing: .04em; cursor: text; outline: none; }
   .col-head .count { font-size: 12px; color: var(--text-dim); border: 1px solid var(--line-soft); border-radius: 999px; padding: 1px 8px; }

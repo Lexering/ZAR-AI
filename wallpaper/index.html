@@ -11,10 +11,10 @@
 -->
 <style>
   :root {
-    --bg: #04070d; --bg2: #081221; --glass: rgba(11, 24, 42, .62); --glass-hi: rgba(16, 36, 62, .75);
-    --line: rgba(120, 220, 255, .16); --line-hi: rgba(120, 220, 255, .38);
-    --cyan: #5ee6ff; --teal: #39f5c6; --ice: #eaf8ff; --text: #a9c6da; --dim: #5d7c94;
-    --amber: #ffbf5a; --red: #ff6b81; --violet: #a98bff;
+    --bg: #120a10; --bg2: #1c1018; --glass: rgba(38, 22, 32, .60); --glass-hi: rgba(56, 32, 46, .74);
+    --line: rgba(236, 190, 170, .16); --line-hi: rgba(236, 190, 170, .38);
+    --cyan: #ecbea9; --teal: #d8ad7c; --ice: #fbefe7; --text: #d9c2b8; --dim: #957c76;
+    --amber: #f2c27b; --red: #ff6b81; --violet: #a98bff;
     --font: "Segoe UI Variable Display", "Segoe UI", "Inter", system-ui, sans-serif;
     --mono: "Cascadia Code", "Consolas", monospace;
     --r: 14px;
@@ -47,7 +47,7 @@
   .list { display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
   .row { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 9px; background: rgba(255,255,255,.025);
          border: 1px solid transparent; font-size: 13.5px; color: var(--ice); cursor: pointer; }
-  .row:hover { border-color: var(--line-hi); background: rgba(94, 230, 255, .06); }
+  .row:hover { border-color: var(--line-hi); background: rgba(236, 190, 170, .06); }
   .row .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--cyan); }
   .row .dot.over { background: var(--red); box-shadow: 0 0 8px var(--red); }
   .row .dot.today { background: var(--amber); }
@@ -72,7 +72,7 @@
   .core svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .core .label { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; }
   .core .name { font-size: min(6.4vh, 4.8vw); font-weight: 600; letter-spacing: .32em; color: var(--ice); margin-left: .32em;
-                text-shadow: 0 0 22px rgba(94, 230, 255, .55); }
+                text-shadow: 0 0 22px rgba(236, 190, 170, .55); }
   .state { font-family: var(--mono); font-size: 12px; letter-spacing: .3em; color: var(--cyan); text-transform: uppercase; }
   .hint { font-size: clamp(14px, 1vw, 18px); color: var(--text); text-align: center; min-height: 1.4em; }
   .bubble { max-width: min(46vw, 760px); text-align: center; font-size: clamp(14px, 1.05vw, 19px); line-height: 1.45; color: var(--ice);
@@ -96,13 +96,13 @@
   .pomo .mode small { display: block; color: var(--dim); font-size: 12px; margin-top: 2px; }
   .btns { display: flex; gap: 6px; flex-wrap: wrap; }
   .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--cyan); font-family: var(--font); font-size: 12.5px; cursor: pointer; }
-  .btn:hover { border-color: var(--cyan); background: rgba(94, 230, 255, .08); }
+  .btn:hover { border-color: var(--cyan); background: rgba(236, 190, 170, .08); }
 
   /* quick launch */
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .app-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border-radius: 10px;
              border: 1px solid var(--line); background: rgba(255,255,255,.02); color: var(--text); font-family: var(--font); font-size: 11.5px; cursor: pointer; }
-  .app-btn:hover { border-color: var(--cyan); color: var(--ice); background: rgba(94, 230, 255, .07); }
+  .app-btn:hover { border-color: var(--cyan); color: var(--ice); background: rgba(236, 190, 170, .07); }
   .app-btn svg { width: 22px; height: 22px; stroke: var(--cyan); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
   /* news */
@@ -151,16 +151,16 @@
     <div class="core" id="core" title="Mute / unmute">
       <svg viewBox="-120 -120 240 240" aria-hidden="true">
         <defs>
-          <radialGradient id="glow"><stop offset="0" stop-color="#5ee6ff" stop-opacity=".35"/><stop offset="1" stop-color="#5ee6ff" stop-opacity="0"/></radialGradient>
-          <linearGradient id="arc" x1="0" x2="1"><stop offset="0" stop-color="#39f5c6"/><stop offset="1" stop-color="#5ee6ff"/></linearGradient>
+          <radialGradient id="glow"><stop offset="0" stop-color="#ecbea9" stop-opacity=".35"/><stop offset="1" stop-color="#ecbea9" stop-opacity="0"/></radialGradient>
+          <linearGradient id="arc" x1="0" x2="1"><stop offset="0" stop-color="#d8ad7c"/><stop offset="1" stop-color="#ecbea9"/></linearGradient>
         </defs>
         <circle r="118" fill="url(#glow)" id="halo"/>
-        <circle r="100" fill="none" stroke="rgba(120,220,255,.12)" stroke-width="1"/>
+        <circle r="100" fill="none" stroke="rgba(236,190,170,.12)" stroke-width="1"/>
         <g id="ticks"></g>
         <circle id="ring1" r="88" fill="none" stroke="url(#arc)" stroke-width="2.2" stroke-dasharray="120 433" stroke-linecap="round"/>
-        <circle id="ring2" r="76" fill="none" stroke="rgba(94,230,255,.5)" stroke-width="1" stroke-dasharray="4 8"/>
-        <path id="wave" fill="none" stroke="#5ee6ff" stroke-width="1.6" stroke-linejoin="round"/>
-        <circle r="56" fill="rgba(8,18,33,.85)" stroke="rgba(120,220,255,.25)"/>
+        <circle id="ring2" r="76" fill="none" stroke="rgba(236,190,170,.5)" stroke-width="1" stroke-dasharray="4 8"/>
+        <path id="wave" fill="none" stroke="#ecbea9" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle r="56" fill="rgba(28,14,22,.85)" stroke="rgba(236,190,170,.25)"/>
       </svg>
       <div class="label"><div class="name">ZAR</div></div>
     </div>
@@ -181,7 +181,7 @@
       <h3><span>Pomodoro</span></h3>
       <div class="pomo">
         <div class="ring">
-          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(120,220,255,.12)" stroke-width="6"/>
+          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(236,190,170,.12)" stroke-width="6"/>
             <circle id="pomo-arc" cx="60" cy="60" r="52" fill="none" stroke="url(#arc)" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>
           <div class="tm" id="pomo-time">25:00</div>
         </div>
@@ -274,10 +274,10 @@
   function drawBg() {
     cx.clearRect(0, 0, W, H);
     const g = cx.createRadialGradient(W / 2, H * .45, 0, W / 2, H * .45, Math.max(W, H) * .7);
-    g.addColorStop(0, "rgba(20,60,95,.55)"); g.addColorStop(.5, "rgba(8,18,33,.4)"); g.addColorStop(1, "rgba(4,7,13,0)");
+    g.addColorStop(0, "rgba(70,30,45,.55)"); g.addColorStop(.5, "rgba(28,14,22,.4)"); g.addColorStop(1, "rgba(18,10,16,0)");
     cx.fillStyle = g; cx.fillRect(0, 0, W, H);
     // perspective grid
-    cx.strokeStyle = "rgba(94,230,255,.045)"; cx.lineWidth = 1;
+    cx.strokeStyle = "rgba(236,190,170,.045)"; cx.lineWidth = 1;
     const step = 64 * devicePixelRatio, off = (performance.now() / 60) % step;
     for (let x = -off; x < W; x += step) { cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke(); }
     for (let y = -off; y < H; y += step) { cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke(); }
@@ -289,10 +289,10 @@
     }
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i];
-      cx.fillStyle = "rgba(140,230,255,.55)"; cx.beginPath(); cx.arc(a.x, a.y, a.r * devicePixelRatio, 0, 6.283); cx.fill();
+      cx.fillStyle = "rgba(245,205,190,.55)"; cx.beginPath(); cx.arc(a.x, a.y, a.r * devicePixelRatio, 0, 6.283); cx.fill();
       for (let j = i + 1; j < pts.length; j++) {
         const b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d = dx * dx + dy * dy;
-        if (d < link * link) { cx.strokeStyle = `rgba(94,230,255,${.10 * (1 - Math.sqrt(d) / link)})`; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
+        if (d < link * link) { cx.strokeStyle = `rgba(236,190,170,${.10 * (1 - Math.sqrt(d) / link)})`; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
       }
     }
   }
@@ -303,7 +303,7 @@
     const a = i / 72 * Math.PI * 2, r1 = 104, r2 = i % 6 ? 108 : 113;
     const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
     l.setAttribute("x1", Math.cos(a) * r1); l.setAttribute("y1", Math.sin(a) * r1); l.setAttribute("x2", Math.cos(a) * r2); l.setAttribute("y2", Math.sin(a) * r2);
-    l.setAttribute("stroke", i % 6 ? "rgba(120,220,255,.18)" : "rgba(120,220,255,.45)"); l.setAttribute("stroke-width", "1");
+    l.setAttribute("stroke", i % 6 ? "rgba(236,190,170,.18)" : "rgba(236,190,170,.45)"); l.setAttribute("stroke-width", "1");
     ticks.appendChild(l);
   }
   let live = { state: "OFFLINE", level_out: 0, level_in: 0, log: [] }, rot = 0;
@@ -324,7 +324,7 @@
       pts2.push(`${(Math.cos(a) * r).toFixed(1)},${(Math.sin(a) * r).toFixed(1)}`);
     }
     $("wave").setAttribute("d", "M" + pts2.join("L") + "Z");
-    $("wave").setAttribute("stroke", st === "MUTED" ? "#ff6b81" : st === "THINKING" ? "#a98bff" : "#5ee6ff");
+    $("wave").setAttribute("stroke", st === "MUTED" ? "#ff6b81" : st === "THINKING" ? "#a98bff" : "#ecbea9");
   }
   function frame(tms) { drawBg(); drawCore(tms); requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
