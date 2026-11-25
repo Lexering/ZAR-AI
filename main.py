@@ -66,6 +66,17 @@ if os.name == "nt":
     except Exception:
         pass
 
+else:
+    try:
+        import fcntl as _fcntl
+        _LOCK = open(_Path(__file__).resolve().parent / "logs" / ".instance.lock", "w")
+        _fcntl.flock(_LOCK, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("[app] Already running; closing this copy.")
+        os._exit(0)
+    except Exception:
+        pass
+
 # Sin terminal, cada programa de consola que lance ZAR (PowerShell, nvidia-smi, cmd...)
 # abriría su propia ventana negra. Esto hace que se ejecuten siempre ocultos.
 if os.name == "nt":
@@ -2474,6 +2485,9 @@ def _start_inbox_watcher(callback):
 
 def _start_mute_hotkey(combo: str, callback, hid: int = 1, label: str = "silenciar el micrófono"):
     """Atajo de teclado global de Windows (funciona aunque ZAR no tenga el foco)."""
+    if os.name != "nt":          # global hotkeys use the Windows API; on Mac use the tray/wallpaper buttons
+        return
+
     if not combo or os.name != "nt":
         return
     import ctypes

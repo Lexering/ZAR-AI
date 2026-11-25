@@ -23,3 +23,11 @@ The keys are inside that .exe: send each one only to its student.
 
 ## Updates
 `python tools/make_update.py` → `updates/ZAR_Update_vN.cmd` (double-click on the student's PC).
+
+## macOS
+1. On the Mac: Code → Download ZIP (logged in to GitHub), it unzips by itself in Downloads.
+2. Right-click **Instalar en Mac.command** → **Open** → **Open** (only the first time, macOS asks).
+3. Answer the small windows (name, language, keys). It installs its own Python + AI components,
+   starts at every login in the background (LaunchAgent) and opens Plash for the animated desktop
+   (`http://127.0.0.1:5055/ui/index`, Browsing Mode on). Allow the microphone when macOS asks.
+Windows-only extras (global hotkeys, some PC-control tools) are not available on Mac.
