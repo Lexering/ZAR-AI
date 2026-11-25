@@ -194,7 +194,7 @@ PRELOAD_VOICE_MODEL = False
 GREET_ON_START      = True
 
 # Ventana: ZAR vive en el fondo del escritorio y en el icono junto al reloj
-START_HIDDEN        = True     # False = abrir la ventana al arrancar, como antes
+START_HIDDEN        = False    # True = start hidden (only the tray icon and the wallpaper)
 TRAY_ICON           = True     # icono en la bandeja del sistema (mostrar / silenciar / salir)
 MUTE_HOTKEY         = "ctrl+alt+m"   # atajo global para silenciar / activar el micro ("" = desactivado)
 PANIC_HOTKEY        = "ctrl+alt+p"   # atajo de pánico: silencia, arma vigilancia y bloquea el PC ("" = off)
