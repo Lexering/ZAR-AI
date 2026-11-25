@@ -60,16 +60,29 @@ PY="$DEST/venv/bin/python"
 
 # ---------- 4. AI components ----------
 say "Instalando los componentes de IA (5-15 minutos, no cierres esta ventana)..."
-"$UV" pip install --python "$PY" webrtcvad-wheels torch scipy librosa
-"$UV" pip install --python "$PY" resemblyzer --no-deps
-if ! "$UV" pip install --python "$PY" -r "$APP/requirements_mac.txt"; then
+# Older macOS (12 Monterey and before): newest Qt / Playwright builds need macOS 13+,
+# so use the last versions that still have ready-made packages (nothing gets compiled).
+MACV="$(sw_vers -productVersion)"; MAJOR="${MACV%%.*}"
+CONS="$DEST/constraints.txt"
+if [ "$MAJOR" -lt 13 ]; then
+  printf "PyQt6==6.7.1\nPyQt6-Qt6==6.7.3\nplaywright==1.47.0\n" > "$CONS"
+  say "macOS $MACV: usando versiones compatibles con este Mac."
+else
+  : > "$CONS"
+fi
+UVI=("$UV" pip install --python "$PY" -c "$CONS" --no-build-package PyQt6 --no-build-package PyQt6-Qt6 --no-build-package PyQt6-sip)
+"${UVI[@]}" webrtcvad-wheels scipy librosa
+"${UVI[@]}" torch || say "(El reconocimiento de voz del dueño no está disponible en este Mac; todo lo demás sí.)"
+"${UVI[@]}" resemblyzer --no-deps
+"${UVI[@]}" PyQt6
+if ! "${UVI[@]}" -r "$APP/requirements_mac.txt"; then
   say "Instalando uno a uno..."
   grep -v '^#' "$APP/requirements_mac.txt" | while read -r pkg; do
-    [ -n "$pkg" ] && { "$UV" pip install --python "$PY" "$pkg" || echo "FAILED $pkg"; }
+    [ -n "$pkg" ] && { "${UVI[@]}" "$pkg" || echo "FAILED $pkg"; }
   done
 fi
-"$UV" pip install --python "$PY" pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz
-"$PY" -m playwright install chromium || true
+"${UVI[@]}" pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz
+"$PY" -m playwright install chromium >/dev/null 2>&1 || say "(Navegador automático no disponible en este Mac; no afecta al resto.)"
 "$PY" -m compileall -q "$APP" >/dev/null 2>&1
 if ! "$PY" -c "import numpy, PyQt6, google.genai"; then
   info "Faltan componentes importantes. Revisa internet y vuelve a abrir el instalador."; exit 1
