@@ -42,6 +42,12 @@ if (-not $keys['gemini_api_key'] -or $keys['gemini_api_key'].Length -lt 20) {
     $keys['gemini_api_key'] = $k.Trim()
 }
 
+if (-not $keys['huggingface_token'] -and -not $keys['gemini_image_key']) {
+    $ik = [Microsoft.VisualBasic.Interaction]::InputBox((L "Clave para crear IMÁGENES (opcional):`n`n- Token de Hugging Face (empieza por hf_), gratis en huggingface.co/settings/tokens`n- o una clave de Gemini con facturación`n`nSi no tienes, déjalo vacío y pulsa Aceptar." "Key to create IMAGES (optional):`n`n- Hugging Face token (starts with hf_), free at huggingface.co/settings/tokens`n- or a Gemini key with billing`n`nIf you don't have one, leave it empty and press OK."), 'ZAR', '')
+    $ik = "$ik".Trim()
+    if ($ik) { if ($ik.StartsWith('hf_')) { $keys['huggingface_token'] = $ik } else { $keys['gemini_image_key'] = $ik } }
+}
+
 # ---------- progress window ----------
 $form = New-Object System.Windows.Forms.Form
 $form.Text = (L 'Instalando ZAR' 'Installing ZAR'); $form.Size = New-Object System.Drawing.Size(520, 190)

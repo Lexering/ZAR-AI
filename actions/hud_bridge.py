@@ -450,8 +450,23 @@ def _find_installed_app():
     return None
 
 
+def _edge_exe():
+    env = os.environ
+    for p in (os.path.join(env.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), r"Microsoft\Edge\Application\msedge.exe"),
+              os.path.join(env.get("PROGRAMFILES", r"C:\Program Files"), r"Microsoft\Edge\Application\msedge.exe"),
+              os.path.join(env.get("LOCALAPPDATA", ""), r"Microsoft\Edge\Application\msedge.exe")):
+        if p and os.path.exists(p):
+            return p
+    return None
+
+
 def _open_target(target: str):
     if target.startswith(("http://", "https://")):
+        edge = _edge_exe() if os.name == "nt" else None     # the desktop's tools open in Microsoft Edge
+        if edge:
+            import subprocess
+            subprocess.Popen([edge, target], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            return
         import webbrowser
         webbrowser.open(target)
     elif target.lower().startswith("shell:"):
