@@ -348,6 +348,8 @@ def save_desktop(new: dict) -> dict:
         d["accent"] = new["accent"]
     if "bg" in new:
         d["bg"] = bool(new["bg"])
+    if "banter" in new:
+        d["banter"] = bool(new["banter"])
     if isinstance(new.get("apps"), list):
         apps = []
         for a in new["apps"][:16]:

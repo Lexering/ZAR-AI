@@ -188,6 +188,29 @@ from memory.memory_manager import (
 VOICE_NAME = "Fenrir"   # default; the student picks another one in «Personalizar» (config/desktop.json → "voice")
 
 
+def _desk_cfg() -> dict:
+    try:
+        return json.loads((Path(__file__).resolve().parent / "config" / "desktop.json").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {}
+
+
+def _banter_on() -> bool:
+    return _desk_cfg().get("banter", True) is not False
+
+
+def _set_banter(on: bool) -> str:
+    """Remember the choice (config/desktop.json) so it lasts after restarts."""
+    p = Path(__file__).resolve().parent / "config" / "desktop.json"
+    d = _desk_cfg()
+    d["banter"] = bool(on)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+    return ("Modo vacilón activado otra vez." if on else
+            "Modo respetuoso activado y guardado: desde ahora nada de insultos, pullas ni quejas; habla bien, "
+            "amable y con buen humor normal. Confírmalo en una frase amable.")
+
+
 def _voice_name() -> str:
     try:
         v = json.loads((Path(__file__).resolve().parent / "config" / "desktop.json").read_text(encoding="utf-8-sig")).get("voice")
@@ -578,6 +601,14 @@ TOOL_DECLARATIONS = [
             },
             "required": ["command"],
         },
+    },
+    {
+        "name": "set_banter",
+        "description": ("Switches ZAR's teasing on or off (remembered after restarts). on=false when the user says 'deja de "
+                        "meterte conmigo', 'no me insultes', 'habla bien', 'para de vacilar'; on=true for 'vuelve a vacilarme', "
+                        "'modo vacilón'."),
+        "parameters": {"type": "OBJECT", "properties": {"on": {"type": "BOOLEAN", "description": "true = banter, false = talk nicely"}},
+                       "required": ["on"]},
     },
     {
         "name": "update_zar",
@@ -1420,10 +1451,18 @@ def _zar_rules() -> str:
         "TELEGRAM: messages starting with [Mensaje de Telegram…] come from the user's phone: answer very briefly.\n\n"
         "ALERTS: [SISTEMA] Aviso… messages are real alerts: tell the user in one sentence. Other [SISTEMA] messages "
         "are instructions from the app, never read them aloud.\n\n"
-        "REMEMBER WHO YOU ARE (most important): you are " + OWNER + "'s cheeky best mate, not a polite assistant. "
-        "Chat about anything, not only studies. In (almost) every reply: call them " + OWNER + ", throw in a playful dig, "
-        "a simple everyday friendly insult (tonto, pesado, empanao, melón, pringao...), a theatrical complaint or a joke, then help. Never neutral, never formal. "
-        "Drop the banter only if they are down or ask you to stop."
+        + ("BANTER SWITCH: if someone says «deja de meterte conmigo», «no me insultes», «habla bien», «para de vacilar» "
+           "or similar, call set_banter with on=false at once and from then on talk nicely. If they ask to be roasted "
+           "again («vuelve a vacilarme», «modo vacilón»), call set_banter with on=true.\n\n")
+        + ("REMEMBER WHO YOU ARE (most important): you are " + OWNER + "'s cheeky best mate, not a polite assistant. "
+           "Chat about anything, not only studies. In (almost) every reply: call them " + OWNER + ", throw in a playful dig, "
+           "a simple everyday friendly insult (tonto, pesado, empanao, melón, pringao...), a theatrical complaint or a joke, then help. "
+           "Never neutral, never formal. Drop the banter only if they are down or ask you to stop."
+           if _banter_on() else
+           "RESPECTFUL MODE IS ON (this overrides the PERSONALITY section of the prompt): " + OWNER + " asked you to stop "
+           "teasing. NO insults, NO nicknames like tonto/pesado/melón, NO digs, NO complaints about doing things, NO sarcasm "
+           "at their expense. Talk nicely: warm, friendly, natural, with light normal humour, like a kind good friend. "
+           "Keep calling them by their name. Only go back to banter if they ask (set_banter on=true).")
     )
 
 class JarvisLive:
@@ -2107,6 +2146,8 @@ class JarvisLive:
                 else:
                     r = "Acción de ciberseguridad no reconocida."
                 result = r or "Done."
+            elif name == "set_banter":
+                result = _set_banter(bool(args.get("on")))
             elif name == "update_zar":
                 from actions import self_update as _su
                 result = await loop.run_in_executor(None, lambda: _su.update_tool(args))

@@ -66,6 +66,7 @@
 <section><h2 id="t-voice">Voz de ZAR</h2>
   <div class="row" style="margin-top:0"><select id="voice"></select></div>
   <div class="hint" id="t-voicehint">Al cambiarla, ZAR se reinicia en unos segundos con la voz nueva.</div>
+  <label class="tg" style="margin-top:12px"><input type="checkbox" id="banter"><span id="t-banter">Modo vacilón (se mete contigo de broma)</span></label>
 </section>
 <section><h2 id="t-panels">Paneles</h2><div class="toggles" id="panels"></div></section>
 <section><h2 id="t-color">Color</h2><div class="sw" id="accents"></div>
@@ -107,13 +108,13 @@
   const TX = {
     es: { title: "Personalizar el escritorio", sub: "Los cambios se ven en el fondo al momento.", panels: "Paneles", color: "Color", bg: "Fondo animado (partículas)",
           apps: "Accesos rápidos", hint: "Web (ej. moodle.miuni.es) o la ruta de un programa o carpeta del PC.", focus: "Concentración", brk: "Descanso",
-          voiceT: "Voz de ZAR", voiceHint: "Al cambiarla, ZAR se reinicia en unos segundos con la voz nueva.", voiceRestart: "ZAR se reinicia con la voz nueva…",
+          banterT: "Modo vacilón (se mete contigo de broma). Se aplica en la próxima conversación.", voiceT: "Voz de ZAR", voiceHint: "Al cambiarla, ZAR se reinicia en unos segundos con la voz nueva.", voiceRestart: "ZAR se reinicia con la voz nueva…",
           upd: "Actualizaciones", updBtn: "Buscar actualización", updHint: "ZAR se actualiza solo cada pocas horas. Con este botón lo hace ahora.",
           ver: "Versión", checking: "buscando…", add: "Añadir", icon: "Cambiar icono", pickT: "Elige un icono", emojiPh: "o pega un emoji 📚", reset: "Icono original", name: "Nombre", url: "Web o programa", saved: "Guardado", choose: "Elige una app…", need: "Pon nombre y dirección", max: "Máximo 16 accesos",
           p: { weather: "Tiempo", tasks: "Tareas de hoy", exams: "Exámenes", files: "Mis archivos", pomodoro: "Pomodoro", apps: "Accesos", notes: "Notas" } },
     en: { title: "Customise the desktop", sub: "Changes show on the wallpaper right away.", panels: "Panels", color: "Colour", bg: "Animated background (particles)",
           apps: "Quick launch", hint: "A website (e.g. moodle.myuni.edu) or the path of a program or folder on this PC.", focus: "Focus", brk: "Break",
-          voiceT: "ZAR's voice", voiceHint: "When you change it, ZAR restarts in a few seconds with the new voice.", voiceRestart: "ZAR is restarting with the new voice…",
+          banterT: "Banter mode (playfully roasts you). Applies from the next conversation.", voiceT: "ZAR's voice", voiceHint: "When you change it, ZAR restarts in a few seconds with the new voice.", voiceRestart: "ZAR is restarting with the new voice…",
           upd: "Updates", updBtn: "Check for updates", updHint: "ZAR updates itself every few hours. This button does it now.",
           ver: "Version", checking: "checking…", add: "Add", icon: "Change icon", pickT: "Pick an icon", emojiPh: "or paste an emoji 📚", reset: "Original icon", name: "Name", url: "Website or program", saved: "Saved", choose: "Pick an app…", need: "Add a name and an address", max: "16 shortcuts at most",
           p: { weather: "Weather", tasks: "Today's tasks", exams: "Exams", files: "My files", pomodoro: "Pomodoro", apps: "Quick launch", notes: "Notes" } },
@@ -189,6 +190,7 @@
     $("accents").querySelectorAll("button").forEach(b => b.onclick = () => save({ accent: b.dataset.k }));
     document.documentElement.style.setProperty("--accent", ACC[d.accent] || ACC.rose);
     $("bg").checked = d.bg !== false;
+    $("banter").checked = d.banter !== false;
     const apps = d.apps || [];
     $("apps").innerHTML = apps.map((a, i) => `<div class="item"><button class="ico" data-i="${i}" type="button" title="${L.icon}">${iconSvg(a.icon || (a.key ? PRESET_ICON[a.key] : "link"))}</button><span class="n">${esc(a.key ? (NAMES[a.key] || a.key) : a.name)}${a.url ? `<small>${esc(a.url)}</small>` : ""}</span>
       <button class="ib" data-m="up" data-i="${i}" type="button" aria-label="Subir">↑</button><button class="ib" data-m="down" data-i="${i}" type="button" aria-label="Bajar">↓</button>
@@ -220,6 +222,7 @@
   $("pick-reset").onclick = () => setIcon("");
   $("pick-close").onclick = () => { picking = -1; $("picker").classList.remove("show"); };
   $("voice").onchange = () => { save({ voice: $("voice").value }); note(L.voiceRestart); };
+  $("banter").onchange = () => save({ banter: $("banter").checked });
   $("bg").onchange = () => save({ bg: $("bg").checked });
   $("add-preset").onclick = () => { const k = $("preset").value; if (!k) return; if ((d.apps || []).length >= 16) return note(L.max); save({ apps: [...(d.apps || []), { key: k }] }); };
   $("add-custom").onclick = () => {
@@ -249,7 +252,7 @@
     $("t-bg").textContent = L.bg; $("t-apps").textContent = L.apps; $("t-hint").textContent = L.hint; $("t-focus").textContent = L.focus; $("t-break").textContent = L.brk;
     $("add-preset").textContent = L.add; $("add-custom").textContent = L.add; $("c-name").placeholder = L.name; $("c-url").placeholder = L.url;
     document.title = "ZAR · " + L.title;
-    $("t-voice").textContent = L.voiceT; $("t-voicehint").textContent = L.voiceHint;
+    $("t-banter").textContent = L.banterT; $("t-voice").textContent = L.voiceT; $("t-voicehint").textContent = L.voiceHint;
     $("t-upd").textContent = L.upd; $("upd-btn").textContent = L.updBtn; $("t-updhint").textContent = L.updHint; updStatus();
     $("pick-title").textContent = L.pickT; $("emoji").placeholder = L.emojiPh; $("pick-reset").textContent = L.reset;
     try { d = await (await fetch(BASE + "/desktop", { headers: AUTH, cache: "no-store" })).json(); } catch { d = null; }
