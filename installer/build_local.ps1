@@ -1,4 +1,5 @@
-﻿# Builds ZAR-Setup-<student>.exe on THIS Windows PC (same result as the GitHub Action, no GitHub billing needed).
+﻿# Builds the installer for one student on THIS Windows PC: dist\ZAR-<student>.zip
+# (a folder with «Instalar ZAR.bat»; no .exe, so Windows 11 "Smart App Control" doesn't block it).
 # Run it with Crear_instalador.bat (double-click). It asks for the student's name and keys in small windows.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName Microsoft.VisualBasic
@@ -13,17 +14,6 @@ function Say($t) { Write-Host $t -ForegroundColor Cyan }
 Say "=========================================="
 Say "   ZAR - crear instalador para un alumno"
 Say "=========================================="
-
-# 1. Inno Setup (the tool that makes the .exe)
-$iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
-          "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $iscc) {
-    Say "Instalando Inno Setup (solo la primera vez)..."
-    & winget install -e --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements | Out-Host
-    $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
-              "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if (-not $iscc) { Box "No se pudo instalar Inno Setup. Descárgalo de jrsoftware.org/isdl.php, instálalo y vuelve a abrir esto." 'Error'; exit 1 }
-}
 
 # 2. Python + Lively (downloaded once, then reused)
 New-Item -ItemType Directory -Force -Path $Deps, (Join-Path $Deps 'lively') | Out-Null
@@ -58,13 +48,31 @@ $gem = Ask "Clave de Gemini del alumno (déjalo vacío para que el instalador se
 $img = Ask "Clave para imágenes (opcional): una clave de Gemini con facturación o un token de Hugging Face hf_..." 'ZAR - Clave de imágenes'
 $ver = (Get-Content -LiteralPath (Join-Path $Root 'version.txt') -Raw).Trim()
 
-# 4. Build
+# 4. Build the package: dist\ZAR-<student>\ (Instalar ZAR.bat + zar\) and dist\ZAR-<student>.zip
 Say "Creando el instalador..."
-Push-Location $Here
-& $iscc /Qp "/DGEMINI_KEY=$gem" "/DIMAGE_KEY=$img" "/DSTUDENT=$student" "/DAPPVER=1.0.$ver" 'zar.iss' | Out-Host
-$rc = $LASTEXITCODE
-Pop-Location
 $dist = Join-Path $Root 'dist'
-if ($rc -ne 0) { Box "Algo falló al crear el instalador (código $rc). Copia lo que sale en la ventana negra y mándaselo a Claude." 'Error'; exit 1 }
-Box "Listo: dist\ZAR-Setup-$student.exe`n`nEnvíaselo solo a ese alumno: lleva su clave dentro."
+$name = if ($student) { "ZAR-$student" } else { 'ZAR' }
+$out = Join-Path $dist $name
+$pk = Join-Path $out 'zar'
+if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $pk | Out-Null
+& robocopy.exe $Root $pk /E /NFL /NDL /NJH /NJS /R:1 /W:1 /XD (Join-Path $Root '.git') (Join-Path $Root '.github') $dist $Deps (Join-Path $Root 'logs') `
+    (Join-Path $Root 'memory\backups') __pycache__ /XF *.pyc api_keys.json zar.json hud_token.txt telegram.json my_voice.pkl | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $pk 'memory') -Filter *.json -ErrorAction SilentlyContinue | Remove-Item -Force
+$pkDeps = Join-Path $pk 'installer\deps'
+New-Item -ItemType Directory -Force -Path $pkDeps | Out-Null
+Copy-Item -LiteralPath $pyFile -Destination $pkDeps
+if (Test-Path -LiteralPath $livelyFile) { Copy-Item -LiteralPath $livelyFile -Destination $pkDeps }
+if (Test-Path -LiteralPath (Join-Path $Deps 'lively')) { Copy-Item -LiteralPath (Join-Path $Deps 'lively') -Destination $pkDeps -Recurse }
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$k = [ordered]@{ gemini_api_key = "$gem".Trim() }
+if ("$img".Trim()) { if ("$img".Trim().StartsWith('hf_')) { $k.huggingface_token = "$img".Trim() } else { $k.gemini_image_key = "$img".Trim() } }
+[IO.File]::WriteAllText((Join-Path $pk 'config\api_keys.json'), ($k | ConvertTo-Json), $utf8)
+[IO.File]::WriteAllText((Join-Path $pk 'config\zar.json'), (@{ name = $student; lang = 'es' } | ConvertTo-Json), $utf8)
+$bat = "@echo off`r`nstart `"`" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0zar\installer\install_direct.ps1`" -Pkg `"%~dp0zar`"`r`n"
+[IO.File]::WriteAllText((Join-Path $out 'Instalar ZAR.bat'), $bat, [Text.Encoding]::ASCII)
+$zip = Join-Path $dist "$name.zip"
+if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip -CompressionLevel Optimal
+Box "Listo: dist\$name.zip`n`nPara instalar: descomprime el ZIP y haz doble clic en «Instalar ZAR».`nEnvíaselo solo a ese alumno: lleva su clave dentro."
 Start-Process explorer.exe $dist

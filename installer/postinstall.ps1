@@ -94,9 +94,13 @@ switch ($Step) {
         $lively = @("$env:ProgramFiles\Lively Wallpaper\Lively.exe", "${env:ProgramFiles(x86)}\Lively Wallpaper\Lively.exe",
                     "$env:LOCALAPPDATA\Programs\Lively Wallpaper\Lively.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) } |
                   Select-Object -First 1
-        if (-not $lively) { Log "Lively not found"; exit 1 }
+        $store = $null
+        if (-not $lively) {     # Microsoft Store version (used when Windows blocks Lively's own setup)
+            $store = Get-AppxPackage -Name '*Lively*' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $store) { Log "Lively not found"; exit 1 }
+        }
         # Wallpaper input = mouse, so the buttons on the desktop can be clicked
-        $setDir = Join-Path $env:LOCALAPPDATA 'Lively Wallpaper'
+        $setDir = if ($store) { Join-Path $env:LOCALAPPDATA "Packages\$($store.PackageFamilyName)\LocalCache\Local\Lively Wallpaper" } else { Join-Path $env:LOCALAPPDATA 'Lively Wallpaper' }
         $setFile = Join-Path $setDir 'Settings.json'
         try {
             New-Item -ItemType Directory -Force -Path $setDir | Out-Null
@@ -106,14 +110,17 @@ switch ($Step) {
             [IO.File]::WriteAllText($setFile, ($s | ConvertTo-Json -Depth 20))
             Log "Lively settings: mouse input on"
         } catch { Log "could not edit Lively settings: $_" }
-        $cu = @((Join-Path $App 'lively\Livelycu.exe'), (Join-Path (Split-Path $lively -Parent) 'Livelycu.exe')) |
-              Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        $cu = @((Join-Path $App 'lively\Livelycu.exe'), $(if ($lively) { Join-Path (Split-Path $lively -Parent) 'Livelycu.exe' })) |
+              Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
         $wp = Join-Path $AppDir 'wallpaper\index.html'
-        Start-Process -FilePath $lively -ArgumentList 'app', '--showApp', 'false' | Out-Null
-        Start-Sleep -Seconds 8
+        if ($store) { Start-Process explorer.exe "shell:AppsFolder\$($store.PackageFamilyName)!App" | Out-Null }
+        else { Start-Process -FilePath $lively -ArgumentList 'app', '--showApp', 'false' | Out-Null }
+        Start-Sleep -Seconds 10
         $tool = if ($cu) { $cu } else { $lively }
-        Start-Process -FilePath $tool -ArgumentList 'setwp', '--file', "`"$wp`"" -WindowStyle Hidden -Wait
-        Log "wallpaper set with $tool"
+        if (-not $tool) { Log "no Lively command tool"; exit 1 }
+        try { Start-Process -FilePath $tool -ArgumentList 'setwp', '--file', "`"$wp`"" -WindowStyle Hidden -Wait; Log "wallpaper set with $tool" }
+        catch { Log "could not set the wallpaper: $_"; exit 1 }
+        if ($store) { Log "Store Lively starts with Windows by itself"; break }
         # Lively must also start with Windows (so the animated desktop is there after every reboot)
         $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
         $already = (Get-ItemProperty -Path $run -ErrorAction SilentlyContinue).PSObject.Properties |
