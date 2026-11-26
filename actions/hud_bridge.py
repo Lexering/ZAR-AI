@@ -320,7 +320,7 @@ WEB_APPS = {
 # ───────────────────────── desktop customisation (config/desktop.json) ─────────────────────────
 DESKTOP_FILE = CONFIG_DIR / "desktop.json"
 DESKTOP_DEFAULT = {
-    "hidden": [],                         # panels not shown: weather, tasks, exams, files, pomodoro, apps, news
+    "hidden": [],                         # panels not shown: weather, tasks, exams, files, pomodoro, apps, notes
     "accent": "rose",                     # rose | blue | green | violet | amber | red
     "bg": True,                           # animated background
     "apps": [{"key": k} for k in ("classroom", "drive", "youtube", "scholar", "notebooklm", "translate", "gemini", "gmail")],
@@ -348,10 +348,11 @@ def save_desktop(new: dict) -> dict:
     if isinstance(new.get("apps"), list):
         apps = []
         for a in new["apps"][:16]:
+            icon = str(a.get("icon") or "")[:40]
             if a.get("key") in WEB_APPS:
-                apps.append({"key": a["key"]})
+                apps.append({"key": a["key"], **({"icon": icon} if icon else {})})
             elif a.get("url") and a.get("name"):
-                apps.append({"name": str(a["name"])[:24], "url": str(a["url"])[:500]})
+                apps.append({"name": str(a["name"])[:24], "url": str(a["url"])[:500], **({"icon": icon} if icon else {})})
         d["apps"] = apps
     if isinstance(new.get("pomo"), list) and len(new["pomo"]) == 2:
         try:
@@ -603,7 +604,7 @@ def open_app(key: str):
 
 # ───────────────────────── chat and settings windows ─────────────────────────
 
-WINDOWS = {"chat": (440, 720), "settings": (440, 600), "customize": (560, 780), "world": (1320, 820), "boards": (1320, 820)}
+WINDOWS = {"chat": (440, 720), "settings": (440, 600), "customize": (560, 780), "notes": (440, 640), "world": (1320, 820), "boards": (1320, 820)}
 
 
 def _browser_exe():
@@ -1111,7 +1112,7 @@ def speak_news() -> dict:
 # ───────────────────────── HTTP server ─────────────────────────
 
 PROTECTED = ("/news", "/weather", "/geocode", "/settings", "/open", "/news_speak", "/window",
-             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action", "/desktop")
+             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action", "/desktop", "/notes")
 MAX_UPLOAD = 100 * 1024 * 1024
 
 
@@ -1190,6 +1191,9 @@ class _Handler(BaseHTTPRequestHandler):
                     s = load_settings()
                     detected = detect_location() if s["location"] is None else None
                     self._send_json({"ok": True, **s, "detected": detected})
+                elif route == "/notes":
+                    from actions import notes
+                    self._send_json({"ok": True, "items": notes.all_notes()})
                 elif route == "/desktop":
                     self._send_json({"ok": True, **load_desktop(), "presets": sorted(WEB_APPS)})
                 elif route == "/boards":
@@ -1319,6 +1323,29 @@ class _Handler(BaseHTTPRequestHandler):
             body = json.loads(self._read_body() or b"{}")
             ok, info = chat(body.get("text", ""), body.get("file", ""))
             self._send_json({"ok": ok, "info": info}, 200 if ok else 400)
+        elif route == "/notes":
+            from actions import notes
+            b = json.loads(self._read_body() or b"{}")
+            a = b.get("action")
+            if a == "add":
+                ok = notes.add(b.get("text", ""), bool(b.get("pin"))) is not None
+            elif a == "toggle":
+                n = next((x for x in notes.all_notes() if str(x["id"]) == str(b.get("id"))), None)
+                ok = bool(n) and notes.update(n["id"], done=not n.get("done")) is not None
+            elif a == "pin":
+                n = next((x for x in notes.all_notes() if str(x["id"]) == str(b.get("id"))), None)
+                ok = bool(n) and notes.update(n["id"], pin=not n.get("pin")) is not None
+            elif a == "edit":
+                ok = notes.update(b.get("id"), text=" ".join(str(b.get("text", "")).split())[:300]) is not None
+            elif a == "delete":
+                ok = notes.delete(b.get("id"))
+            elif a == "clear":
+                notes.clear_done(); ok = True
+            else:
+                ok = False
+            with _lock:
+                _data["notes_rev"] = time.time()
+            self._send_json({"ok": ok, "items": notes.all_notes()})
         elif route == "/desktop":
             self._send_json({"ok": True, **save_desktop(json.loads(self._read_body() or b"{}"))})
         elif route == "/files_action":

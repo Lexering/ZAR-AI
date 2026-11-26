@@ -12,9 +12,15 @@ except ImportError:
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
-_SAFE_ROOTS: list[Path] = [
-    Path.home(),
-]
+def _all_drives() -> list[Path]:
+    """ZAR has access to the whole computer: every drive (C:, D:, USB sticks...), not only the user folder."""
+    if _OS == "Windows":
+        import string
+        return [Path(f"{d}:\\") for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")] or [Path.home()]
+    return [Path("/")]
+
+
+_SAFE_ROOTS: list[Path] = _all_drives()
 
 def _is_safe_path(target: Path) -> bool:
     """Verilen path _SAFE_ROOTS içinde mi? Değilse işlemi reddet."""

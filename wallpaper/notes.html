@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAR · Notas</title>
+<!-- ZAR - quick notes window (the «Notas» panel of the desktop, with a keyboard). -->
+<style>
+  :root { --bg: #120a10; --card: rgba(38, 22, 32, .7); --line: rgba(236, 190, 170, .16); --line-hi: rgba(236, 190, 170, .4);
+          --accent: #ecbea9; --ice: #fbefe7; --text: #d9c2b8; --dim: #957c76; --red: #ff6b81;
+          --font: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+  body { display: flex; flex-direction: column; padding: 18px 18px 14px;
+         background: radial-gradient(ellipse 120% 50% at 50% 0%, #3a1c2c 0%, var(--bg) 70%) fixed, var(--bg); }
+  h1 { margin: 0 0 12px; font-size: 22px; font-weight: 600; color: var(--ice); }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--ice); font: inherit; outline: none; }
+  input:focus { border-color: var(--accent); }
+  .btn { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-hi); background: rgba(56,32,46,.8); color: var(--ice); font: inherit; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .list { flex: 1; overflow-y: auto; margin-top: 14px; }
+  .n { display: flex; align-items: flex-start; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  .ck { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; border: 1.5px solid var(--accent); background: none; cursor: pointer; padding: 0; }
+  .n.done .ck { background: var(--accent); }
+  .tx { flex: 1; color: var(--ice); word-break: break-word; outline: none; border-radius: 6px; padding: 0 4px; }
+  .tx:focus { background: rgba(0,0,0,.3); }
+  .n.done .tx { color: var(--dim); text-decoration: line-through; }
+  .ib { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--dim); cursor: pointer; }
+  .ib:hover { border-color: var(--line-hi); color: var(--ice); } .ib.del:hover { color: var(--red); border-color: var(--red); }
+  .ib.on { color: var(--accent); }
+  .empty { color: var(--dim); text-align: center; padding: 30px 10px; }
+  .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; color: var(--dim); font-size: 13px; }
+  .link { background: none; border: 0; color: var(--dim); cursor: pointer; font: inherit; text-decoration: underline; }
+  .link:hover { color: var(--ice); }
+</style>
+</head>
+<body>
+<h1 id="title">Notas</h1>
+<form id="f" autocomplete="off"><input id="txt" maxlength="300" autofocus placeholder="Escribe una nota y pulsa Enter"><button class="btn" id="add">Añadir</button></form>
+<div class="list" id="list"></div>
+<div class="foot"><span id="count"></span><button class="link" id="clear" type="button">Quitar las hechas</button></div>
+<script>
+(() => {
+  const BASE = "http://127.0.0.1:5055", AUTH = { "X-ZAR-Token": "__HUD_TOKEN__" };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let EN = false;
+  const L = (es, en) => EN ? en : es;
+  async function call(body) {
+    try {
+      const r = await (await fetch(BASE + "/notes", { method: body ? "POST" : "GET", headers: { ...AUTH, "Content-Type": "application/json" },
+                                                     body: body ? JSON.stringify(body) : undefined, cache: "no-store" })).json();
+      if (r.ok || r.items) render(r.items || []);
+    } catch { $("list").innerHTML = `<div class="empty">${L("ZAR no responde", "ZAR isn't responding")}</div>`; }
+  }
+  function render(items) {
+    const pending = items.filter(n => !n.done).length;
+    $("count").textContent = L(`${pending} pendiente(s)`, `${pending} to do`);
+    $("list").innerHTML = items.length ? items.map(n => `<div class="n ${n.done ? "done" : ""}" data-id="${n.id}">
+        <button class="ck" type="button" aria-label="${L("Hecha", "Done")}"></button>
+        <div class="tx" contenteditable="true" spellcheck="true">${esc(n.text)}</div>
+        <button class="ib ${n.pin ? "on" : ""}" data-a="pin" type="button" title="${L("Fijar arriba", "Pin")}">📌</button>
+        <button class="ib del" data-a="delete" type="button" title="${L("Borrar", "Delete")}">✕</button></div>`).join("")
+      : `<div class="empty">${L("Sin notas todavía.", "No notes yet.")}</div>`;
+    $("list").querySelectorAll(".n").forEach(el => {
+      const id = el.dataset.id, tx = el.querySelector(".tx"), orig = tx.textContent;
+      el.querySelector(".ck").onclick = () => call({ action: "toggle", id });
+      el.querySelectorAll(".ib").forEach(b => b.onclick = () => call({ action: b.dataset.a, id }));
+      tx.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); tx.blur(); } };
+      tx.onblur = () => { const v = tx.textContent.trim(); if (v && v !== orig) call({ action: "edit", id, text: v }); else if (!v) tx.textContent = orig; };
+    });
+  }
+  $("f").onsubmit = e => { e.preventDefault(); const v = $("txt").value.trim(); if (!v) return; $("txt").value = ""; call({ action: "add", text: v }); };
+  $("clear").onclick = () => call({ action: "clear" });
+  (async () => {
+    try { EN = (await (await fetch(BASE + "/state", { cache: "no-store" })).json()).lang === "en"; } catch {}
+    if (EN) { document.documentElement.lang = "en"; $("title").textContent = "Notes"; $("txt").placeholder = "Type a note and press Enter";
+              $("add").textContent = "Add"; $("clear").textContent = "Remove done"; document.title = "ZAR · Notes"; }
+    call();
+  })();
+})();
+</script>
+</body>
+</html>

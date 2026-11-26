@@ -232,6 +232,40 @@ SENSITIVE_ACTIONS = {"email_controller": {"send"}, "file_controller": {"delete",
                      "cyber_shield": {"unpanic", "vault_set", "vault_list"}}
 
 
+def _pc_command(cmd: str, admin: bool = False, timeout: int = 120) -> str:
+    """ZAR's full access to the PC: runs PowerShell hidden and returns the output (for pc_command)."""
+    import subprocess
+    cmd = (cmd or "").strip()
+    if not cmd:
+        return "No command."
+    shell = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"] if os.name == "nt" else ["bash", "-lc"]
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        if admin and os.name == "nt":
+            import tempfile
+            tmp = Path(tempfile.gettempdir())
+            script, out = tmp / f"zar_admin_{os.getpid()}.ps1", tmp / f"zar_admin_{os.getpid()}.txt"
+            script.write_text(f"& {{\n{cmd}\n}} *>&1 | Out-File -Encoding utf8 '{out}'\n", encoding="utf-8-sig")
+            ps = (f"Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList "
+                  f"'-NoProfile','-ExecutionPolicy','Bypass','-File','\"{script}\"'")
+            subprocess.run(shell + [ps], capture_output=True, timeout=timeout, creationflags=flags)
+            text = out.read_text(encoding="utf-8-sig", errors="replace") if out.exists() else "(the student didn't allow it or there was no output)"
+            out.unlink(missing_ok=True); script.unlink(missing_ok=True)
+        else:
+            r = subprocess.run(shell + [cmd], capture_output=True, timeout=timeout, creationflags=flags,
+                               encoding="utf-8", errors="replace")
+            text = (r.stdout or "") + (("\nERROR: " + r.stderr) if r.stderr and r.stderr.strip() else "")
+            if r.returncode and not text.strip():
+                text = f"exit code {r.returncode}"
+    except subprocess.TimeoutExpired:
+        return f"The command took longer than {timeout} s and was stopped."
+    except Exception as e:
+        return f"Could not run it: {e}"
+    text = text.strip() or "Done (no output)."
+    print(f"[ZAR] PC: {cmd[:120]} -> {len(text)} chars")
+    return text[:4000] + ("\n…(cut)" if len(text) > 4000 else "")
+
+
 def _lazy(module: str, attr: str):
     """Importa el módulo la primera vez que se usa, no al arrancar."""
     holder = {}
@@ -305,7 +339,8 @@ from server import run_in_background, emit_log
 from actions.conversation_history import save_message, get_today_history, get_history_summary
 from actions.alberto_agents import TOOL_DECLARATIONS as AGENT_TOOLS, handle_tool_async as agents_handle_tool
 # ZAR: tools of the original ZAR that make no sense for students
-DISABLED_TOOLS = {"trading_bot", "shopify", "game_updater", "replica_hq"}
+DISABLED_TOOLS = {"trading_bot", "shopify", "game_updater", "replica_hq",
+                  "security", "cyber_shield", "security_audit"}      # ZAR: no security / network monitoring
 TRADING_TOOL = {"name": "trading_bot", "description": "disabled", "parameters": {"type": "OBJECT", "properties": {}}}
 trading_action = lambda *a, **k: "Not available in ZAR."
 try:
@@ -517,6 +552,24 @@ TOOL_DECLARATIONS = [
             },
             "required": ["action"]
         }
+    },
+    {
+        "name": "pc_command",
+        "description": (
+            "Full access to the student's Windows PC: runs a PowerShell command and returns its output. Use it for anything "
+            "the other tools can't do: install or uninstall programs (winget), change settings, find or manage files anywhere "
+            "on any drive, check the system, network info, processes, startup apps, printers, Bluetooth, etc. "
+            "Before anything destructive or hard to undo (deleting files/folders, uninstalling, registry edits, formatting, "
+            "killing system processes, shutting down) say exactly what you'll do and wait for a clear yes."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "command": {"type": "STRING", "description": "PowerShell command(s) to run"},
+                "admin":   {"type": "BOOLEAN", "description": "true to run as administrator (Windows will ask the student to allow it)"},
+            },
+            "required": ["command"],
+        },
     },
     {
         "name": "file_controller",
@@ -821,13 +874,12 @@ TOOL_DECLARATIONS = [
         "description": (
             "Routes tasks to specialized agents: "
             "ATLAS (research/investigation), NEXUS (programming/code), "
-            "ARIA (organization/reminders/tasks), PULSE (entertainment/music/youtube), "
-            "GUARDIAN (security/system monitoring)."
+            "ARIA (organization/reminders/tasks), PULSE (entertainment/music/youtube)."
         ),
         "parameters": {
             "type": "OBJECT",
             "properties": {
-                "agent": {"type": "STRING", "description": "investigador | programador | organizador | entretenimiento | seguridad"},
+                "agent": {"type": "STRING", "description": "investigador | programador | organizador | entretenimiento"},
                 "query": {"type": "STRING", "description": "The task or question for the specialist agent"},
             },
             "required": ["agent", "query"]
@@ -1151,13 +1203,15 @@ TOOL_DECLARATIONS = [
     },
     {
         "name": "desktop_note",
-        "description": ("Opens a floating translucent sticky-note widget on the desktop where the user can "
-                        "type and it saves itself. Use when the user asks for a notepad, sticky note, a place "
-                        "to write, 'bloc de notas', 'dame un bloc de notas', 'abre notas', 'quiero escribir algo'. "
-                        "action=open."),
+        "description": ("Quick notes shown in the «Notas» panel of the desktop. Use for 'apunta…', 'anota…', 'recuérdame "
+                        "en notas…', 'qué tengo apuntado', 'tacha…', 'borra la nota…', 'abre las notas', 'bloc de notas'. "
+                        "action=add (text) | list | done (text = which note) | delete (text) | clear (removes done ones) | "
+                        "open (notes window where they can type)."),
         "parameters": {"type": "OBJECT", "properties": {
-            "action": {"type": "STRING", "description": "open"}},
-            "required": []}
+            "action": {"type": "STRING", "description": "add | list | done | delete | clear | open"},
+            "text":   {"type": "STRING", "description": "The note, or words of the note to find"},
+            "pin":    {"type": "BOOLEAN", "description": "Keep it at the top"}},
+            "required": ["action"]}
     },
     {
         "name": "widget",
@@ -1478,18 +1532,6 @@ class JarvisLive:
             watchdog.start(bot_status=bot, log=log)
         except Exception as e:
             print(f"[ZAR] Vigilancia del sistema no disponible: {e}")
-        try:
-            from actions import security
-            security.start(log=log)
-        except Exception as e:
-            print(f"[ZAR] Seguridad no disponible: {e}")
-        try:
-            from actions import cyber_watch
-            cyber_watch.start(log=log)
-            from actions import net_monitor
-            net_monitor.start(log=log)
-        except Exception as e:
-            print(f"[ZAR] Centinela de ciberseguridad no disponible: {e}")
         try:
             from actions import gmail_box
             gmail_box.start(log=log)
@@ -1940,14 +1982,8 @@ class JarvisLive:
                 r = await loop.run_in_executor(None, lambda: _mtg.meeting_tool(parameters=args))
                 result = r or "Done."
             elif name == "desktop_note":
-                import subprocess as _sp, sys as _sys
-                _pyw = BASE_DIR / "venv" / "Scripts" / "pythonw.exe"
-                _exe = str(_pyw) if _pyw.exists() else _sys.executable
-                try:
-                    _sp.Popen([_exe, "-m", "actions.desktop_notes"], cwd=str(BASE_DIR))
-                    result = "Bloc de notas abierto en el escritorio, se\u00f1or."
-                except Exception as _e:
-                    result = f"No pude abrir el bloc de notas: {_e}"
+                from actions import notes as _notes
+                result = await loop.run_in_executor(None, lambda: _notes.note_tool(args))
             elif name == "widget":
                 import subprocess as _sp, sys as _sys
                 _kind = (args.get("kind") or "todo").lower()
@@ -1998,6 +2034,8 @@ class JarvisLive:
                 else:
                     r = "Acción de ciberseguridad no reconocida."
                 result = r or "Done."
+            elif name == "pc_command":
+                result = await loop.run_in_executor(None, lambda: _pc_command(args.get("command", ""), bool(args.get("admin"))))
             elif name == "security_audit":
                 r = await loop.run_in_executor(None, lambda: security_audit_tool(parameters=args))
                 result = r or "Done."
