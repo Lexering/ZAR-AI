@@ -80,5 +80,5 @@ $readme = "ZAR - como instalar`r`n`r`n1. Si viene en un ZIP: clic derecho en el 
 $zip = Join-Path $dist "$name.zip"
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip -CompressionLevel Optimal
-Box "Listo: dist\$name.zip`n`nPara instalar: descomprime el ZIP y haz doble clic en «Instalar ZAR».`nEnvíaselo solo a ese alumno: lleva su clave dentro."
+Box "Listo: dist\$name.zip`n`nPara instalar: clic derecho en el ZIP > Propiedades > Desbloquear, extraerlo y doble clic en «Instalar ZAR».`nEnvíaselo solo a ese alumno: lleva su clave dentro."
 Start-Process explorer.exe $dist
