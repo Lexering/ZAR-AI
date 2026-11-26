@@ -24,3 +24,7 @@ dist/
 installer/deps/
 updates/
 backups/
+
+# never commit keys
+API
+API.txt
