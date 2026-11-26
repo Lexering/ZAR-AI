@@ -122,6 +122,50 @@
            border: 1px solid var(--line-hi); color: var(--ice); font-size: 13px; opacity: 0; transition: opacity .25s; z-index: 5; }
   .toast.show { opacity: 1; }
   .offline .core { filter: grayscale(1) brightness(.6); }
+  /* folder: Mis archivos / My files */
+  .folder { cursor: pointer; transition: border-color .25s, background .25s, box-shadow .25s; }
+  .folder:hover, .folder:focus-visible { border-color: var(--line-hi); background: var(--glass-hi); outline: none; }
+  .folder.over { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 0 34px rgba(236,190,169,.2); }
+  .folder .fh { display: flex; align-items: center; gap: 14px; }
+  .folder .fi { width: 46px; height: 46px; flex: none; transition: transform .25s; }
+  .folder:hover .fi, .folder.over .fi { transform: translateY(-2px); }
+  .folder .fi svg { width: 100%; height: 100%; fill: none; stroke: var(--cyan); stroke-width: 1.3; stroke-linejoin: round; }
+  .folder .ft { font-size: 19px; font-weight: 600; color: var(--ice); line-height: 1.15; }
+  .folder .fs { font-size: 12.5px; color: var(--dim); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .folder .thumbs { display: flex; gap: 8px; margin-top: 1.2vh; }
+  .folder .thumbs:empty { display: none; }
+  .folder .tb { position: relative; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.25);
+                overflow: hidden; display: grid; place-items: center; flex: none; }
+  .folder .tb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .folder .tb svg { width: 19px; height: 19px; fill: none; stroke: var(--cyan); stroke-width: 1.5; }
+  .folder .tb.more { font-size: 12px; color: var(--dim); }
+  .fveil { position: fixed; inset: 0; z-index: 9; background: rgba(10, 5, 9, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+           display: none; align-items: center; justify-content: center; }
+  .fveil.show { display: flex; }
+  .fpanel { width: min(980px, 90vw); height: min(760px, 84vh); display: flex; flex-direction: column; background: rgba(30, 16, 25, .96);
+            border: 1px solid var(--line-hi); border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.55); overflow: hidden; position: relative; user-select: none; }
+  .fpanel header { display: flex; align-items: center; gap: 10px; padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
+  .fpanel h2 { margin: 0; font-size: 24px; font-weight: 600; color: var(--ice); flex: 1; letter-spacing: .02em; }
+  .fpanel .x { background: none; border: 1px solid var(--line); color: var(--ice); width: 36px; height: 36px; border-radius: 50%; font-size: 17px; cursor: pointer; }
+  .fpanel .x:hover { border-color: var(--cyan); }
+  .fbody { flex: 1; overflow-y: auto; padding: 18px 22px 22px; }
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .tile { border: 1px solid var(--line); border-radius: 14px; background: var(--glass); overflow: hidden; display: flex; flex-direction: column; transition: border-color .2s; }
+  .tile:hover { border-color: var(--line-hi); }
+  .tile .th { height: 110px; flex: none; display: grid; place-items: center; background: rgba(0,0,0,.25); position: relative; overflow: hidden; }
+  .tile .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tile .th svg { width: 40px; height: 40px; fill: none; stroke: var(--cyan); stroke-width: 1.4; }
+  .tile .th .ext { position: absolute; bottom: 14px; font-size: 10px; font-weight: 600; letter-spacing: .12em; color: var(--cyan); }
+  .tile .nm { padding: 8px 10px 2px; font-size: 13px; color: var(--ice); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .mt { padding: 0 10px 6px; font-size: 11px; color: var(--dim); }
+  .tile .ta { display: flex; gap: 4px; padding: 0 8px 8px; }
+  .tile .ta button { flex: 1; padding: 5px 0; border-radius: 8px; border: 1px solid var(--line); background: rgba(0,0,0,.2); color: var(--ice); font-size: 11.5px; cursor: pointer; font-family: var(--font); }
+  .tile .ta button:hover { border-color: var(--cyan); }
+  .tile .ta button.arm { background: var(--red); color: #2a0a12; border-color: var(--red); }
+  .drop { position: absolute; inset: 0; display: none; place-items: center; background: rgba(236,190,169,.1); border: 2px dashed var(--cyan);
+          border-radius: 20px; font-size: 26px; color: var(--ice); pointer-events: none; }
+  .fpanel.over .drop { display: grid; }
+  .fempty { text-align: center; color: var(--dim); padding: 8vh 0; font-size: 15px; line-height: 1.6; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -143,6 +187,16 @@
     <section class="panel">
       <h3><span data-i18n="exams">Exámenes</span></h3>
       <div id="exams"><div class="empty" data-i18n="noExams">Sin exámenes</div></div>
+    </section>
+    <section class="panel folder" id="folder" role="button" tabindex="0">
+      <h3><span data-i18n="myFiles">Mis archivos</span><span class="more" id="f-quick" data-i18n="upload">Subir</span></h3>
+      <div class="fh">
+        <div class="fi"><svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ecbea9" stop-opacity=".32"/><stop offset="1" stop-color="#d8ad7c" stop-opacity=".08"/></linearGradient></defs>
+          <path d="M5 13a3 3 0 0 1 3-3h10.5l4 4.5H40a3 3 0 0 1 3 3V36a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill="url(#fg)"/><path d="M5 19.5h38"/></svg></div>
+        <div style="min-width:0;flex:1"><div class="ft" id="f-title"></div><div class="fs" id="f-count"></div></div>
+      </div>
+      <div class="thumbs" id="f-recent"></div>
     </section>
   </div>
 
@@ -216,6 +270,15 @@
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<div class="fveil" id="fveil"><div class="fpanel" id="fpanel" role="dialog" aria-modal="true">
+  <header><h2 data-i18n="myFiles">Mis archivos</h2>
+    <button class="pill" id="f-up" type="button"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><span data-i18n="uploadFiles">Subir archivos</span></button>
+    <button class="pill" id="f-openfolder" type="button"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span data-i18n="openFolder">Abrir carpeta</span></button>
+    <button class="x" id="f-close" type="button" aria-label="✕">✕</button></header>
+  <div class="fbody"><div class="fgrid" id="f-grid"></div></div>
+  <div class="drop" data-i18n="dropHere">Suelta aquí para subirlo</div>
+  <input type="file" id="f-pick" multiple hidden>
+</div></div>
 
 <script>
 (() => {
@@ -233,14 +296,22 @@
           LISTENING: "Te escucho", STANDBY: "Di «Zar» para hablar", THINKING: "Pensando…", SPEAKING: "Hablando", MUTED: "Micro silenciado",
           OFFLINE: "ZAR se está iniciando…", DICTATING: "Dictando", focus: "Concentración", brk: "Descanso", sessions: "sesiones hoy",
           start: "Empezar", pause: "Pausa", reset: "Reiniciar", overdue: "atrasada", dueToday: "hoy", days: "días", daysOne: "día",
-          todayExam: "hoy", opened: "Abriendo", offlineMsg: "Inicia ZAR primero", feels: "sensación", rain: "lluvia" },
+          todayExam: "hoy", opened: "Abriendo", offlineMsg: "Inicia ZAR primero", feels: "sensación", rain: "lluvia",
+          myFiles: "Mis archivos", upload: "Subir", uploadFiles: "Subir archivos", openFolder: "Abrir carpeta", dropHere: "Suelta aquí para subirlo",
+          emptyFolder: "Carpeta vacía", emptyHint: "Apuntes, PDF, fotos de la pizarra…", files: "archivos", fileOne: "archivo", last: "Último",
+          emptyBig: "La carpeta está vacía.<br>Pulsa «Subir archivos» y elige apuntes, PDF o fotos.", open: "Abrir", toZar: "A ZAR", remove: "Quitar",
+          sure: "¿Seguro?", uploading: "Subiendo", uploaded: "subido(s)" },
     en: { today: "Today", openBoards: "Open", noTasks: "Nothing due today 🎉", exams: "Exams", noExams: "Add an exam: “Zar, I have a History exam on January 15”",
           quick: "Quick launch", news: "AI & world", listen: "Listen", mic: "Mic", chat: "Chat", tasks: "Tasks", world: "World",
           loadingWeather: "Loading weather…", morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening",
           LISTENING: "I'm listening", STANDBY: "Say “Zar” to talk", THINKING: "Thinking…", SPEAKING: "Speaking", MUTED: "Mic muted",
           OFFLINE: "ZAR is starting…", DICTATING: "Dictating", focus: "Focus", brk: "Break", sessions: "sessions today",
           start: "Start", pause: "Pause", reset: "Reset", overdue: "overdue", dueToday: "today", days: "days", daysOne: "day",
-          todayExam: "today", opened: "Opening", offlineMsg: "Start ZAR first", feels: "feels", rain: "rain" },
+          todayExam: "today", opened: "Opening", offlineMsg: "Start ZAR first", feels: "feels", rain: "rain",
+          myFiles: "My files", upload: "Upload", uploadFiles: "Upload files", openFolder: "Open folder", dropHere: "Drop here to upload",
+          emptyFolder: "Empty folder", emptyHint: "Notes, PDFs, photos of the board…", files: "files", fileOne: "file", last: "Latest",
+          emptyBig: "The folder is empty.<br>Press “Upload files” and pick notes, PDFs or photos.", open: "Open", toZar: "To ZAR", remove: "Remove",
+          sure: "Sure?", uploading: "Uploading", uploaded: "uploaded" },
   };
   let lang = "es", owner = "";
   const t = k => (T[lang] || T.es)[k] ?? k;
@@ -438,6 +509,82 @@
   document.querySelectorAll("[data-app]").forEach(b => b.onclick = () => { toast(t("opened") + " " + b.textContent.trim() + "…"); post("/open?app=" + b.dataset.app, 45000); });
   const toggleMute = async () => { if (DEMO) return; try { await fetch(BASE + "/mute", { method: "POST" }); } catch {} };
   $("mic").onclick = toggleMute; $("core").onclick = toggleMute;
+
+
+  // ───────── My files (folder) ─────────
+  const ICONS = {
+    pdf: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+    doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    sheet: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/>',
+    video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+    audio: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  };
+  const fsize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+  const thumb = f => f.kind === "image" ? `<img loading="lazy" alt="" src="${BASE}/file?name=${encodeURIComponent(f.name)}&t=${TOKEN}">`
+                                        : `<svg viewBox="0 0 24 24">${ICONS[f.kind] || ICONS.file}</svg>`;
+  let files = [];
+  function renderFolder() {
+    $("f-title").textContent = files.length ? `${files.length} ${files.length === 1 ? t("fileOne") : t("files")}` : t("emptyFolder");
+    $("f-count").textContent = files.length ? `${t("last")}: ${files[0].name}` : t("emptyHint");
+    $("f-recent").innerHTML = files.slice(0, 5).map(f => `<div class="tb" title="${esc(f.name)}">${thumb(f)}</div>`).join("")
+      + (files.length > 5 ? `<div class="tb more">+${files.length - 5}</div>` : "");
+  }
+  async function loadFiles() {
+    if (DEMO) { renderFolder(); return; }
+    let d; try { d = await api("/files"); } catch { return; }
+    if (!d || !d.ok) return;
+    files = d.items; renderFolder();
+    if ($("fveil").classList.contains("show")) renderFiles();
+  }
+  function renderFiles() {
+    const g = $("f-grid");
+    if (!files.length) { g.innerHTML = `<div class="fempty" style="grid-column:1/-1">${t("emptyBig")}</div>`; return; }
+    g.innerHTML = files.map((f, i) => `<div class="tile" data-i="${i}">
+      <div class="th">${thumb(f)}${f.kind === "image" ? "" : `<span class="ext">${esc((f.name.split(".").pop() || "").toUpperCase().slice(0, 5))}</span>`}</div>
+      <div class="nm" title="${esc(f.name)}">${esc(f.name)}</div><div class="mt">${f.mtime} · ${fsize(f.size)}</div>
+      <div class="ta"><button data-a="open" type="button">${t("open")}</button><button data-a="use" type="button">${t("toZar")}</button><button data-a="delete" type="button">${t("remove")}</button></div></div>`).join("");
+    g.querySelectorAll(".tile").forEach(tile => tile.querySelectorAll("button").forEach(b => b.onclick = async () => {
+      const f = files[+tile.dataset.i];
+      if (b.dataset.a === "delete" && !b.classList.contains("arm")) {
+        b.classList.add("arm"); b.textContent = t("sure"); setTimeout(() => { b.classList.remove("arm"); b.textContent = t("remove"); }, 3000); return;
+      }
+      const r = await post("/files_action", 15000, { action: b.dataset.a, name: f.name });
+      if (r && r.msg) toast(r.msg);
+      if (b.dataset.a === "delete") loadFiles();
+      if (b.dataset.a === "use" && r && r.ok) closeFiles();
+    }));
+  }
+  async function upload(list) {
+    const arr = [...list].filter(f => f.size <= 100 * 1024 * 1024);
+    if (!arr.length) return;
+    let ok = 0;
+    for (const f of arr) {
+      toast(`${t("uploading")} ${f.name}…`);
+      try { const r = await fetch(`${BASE}/upload?name=${encodeURIComponent(f.name)}`, { method: "POST", headers: AUTH, body: f }); if ((await r.json()).ok) ok++; } catch {}
+    }
+    toast(`${ok}/${arr.length} ${t("uploaded")}`);
+    loadFiles();
+  }
+  function openFiles() { $("fveil").classList.add("show"); renderFiles(); loadFiles(); }
+  function closeFiles() { $("fveil").classList.remove("show"); }
+  $("folder").onclick = openFiles;
+  $("folder").onkeydown = e => { if (e.key === "Enter" || e.key === " ") openFiles(); };
+  $("f-quick").onclick = e => { e.stopPropagation(); $("f-pick").click(); };
+  $("f-close").onclick = closeFiles;
+  $("fveil").onclick = e => { if (e.target.id === "fveil") closeFiles(); };
+  $("f-up").onclick = () => $("f-pick").click();
+  $("f-pick").onchange = e => { upload(e.target.files); e.target.value = ""; };
+  $("f-openfolder").onclick = () => post("/files_action", 15000, { action: "open_folder" }).then(r => r && r.msg && toast(r.msg));
+  for (const el of [$("folder"), $("fpanel")]) {
+    el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragleave", e => { if (!el.contains(e.relatedTarget)) el.classList.remove("over"); });
+    el.addEventListener("drop", e => { e.preventDefault(); el.classList.remove("over"); if (e.dataTransfer.files.length) { upload(e.dataTransfer.files); if (el.id === "folder") openFiles(); } });
+  }
+  window.addEventListener("dragover", e => e.preventDefault());
+  window.addEventListener("drop", e => e.preventDefault());
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeFiles(); });
+  setInterval(loadFiles, 20000); setTimeout(loadFiles, 1300);
 
   // ───────── Pomodoro ─────────
   const store = { get(k, d) { try { const v = localStorage.getItem("zar-" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },

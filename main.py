@@ -212,7 +212,7 @@ PANIC_HOTKEY        = "ctrl+alt+p"   # atajo de pánico: silencia, arma vigilanc
 
 # Palabra de activación: solo escucha de verdad cuando oye «ZAR»
 WAKE_WORD           = True
-AWAKE_WINDOW_S      = 15       # segundos que sigue atento después de hablar contigo
+AWAKE_WINDOW_S      = 40       # segundos que sigue atento después de hablar contigo (conversación seguida)
 WAKE_PREROLL_S      = 1.6      # audio de antes de «ZAR» que también se envía
 
 # Reconocimiento de quién habla

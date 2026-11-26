@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import re
 import threading
 import time
@@ -582,6 +583,68 @@ def save_upload(name: str, data: bytes) -> Path:
     return path
 
 
+# ───────────────────────── "Mis archivos": the folder on the desktop ─────────────────────────
+
+_IMG = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".heic"}
+
+
+def _open_path(p: Path):
+    import subprocess
+    if sys.platform == "darwin":
+        subprocess.Popen(["/usr/bin/open", str(p)])
+    elif os.name == "nt":
+        os.startfile(str(p))
+    else:
+        subprocess.Popen(["xdg-open", str(p)])
+
+
+def _file_in_folder(name: str) -> Path | None:
+    p = (_uploads_dir() / os.path.basename(name or "")).resolve()
+    return p if p.is_file() and p.parent == _uploads_dir().resolve() else None
+
+
+def list_files() -> dict:
+    folder = _uploads_dir()
+    items = []
+    for p in folder.iterdir():
+        if p.is_file() and not p.name.startswith("."):
+            st = p.stat()
+            ext = p.suffix.lower()
+            kind = ("image" if ext in _IMG else "pdf" if ext == ".pdf" else
+                    "doc" if ext in (".doc", ".docx", ".odt", ".txt", ".rtf", ".pages") else
+                    "sheet" if ext in (".xls", ".xlsx", ".csv", ".ods", ".numbers") else
+                    "video" if ext in (".mp4", ".mov", ".avi", ".mkv") else "audio" if ext in (".mp3", ".m4a", ".wav") else "file")
+            items.append({"name": p.name, "size": st.st_size, "mtime": time.strftime("%d/%m %H:%M", time.localtime(st.st_mtime)),
+                          "ts": st.st_mtime, "kind": kind})
+    items.sort(key=lambda x: x["ts"], reverse=True)
+    return {"ok": True, "folder": str(folder), "items": items[:300]}
+
+
+def files_action(body: dict) -> dict:
+    a = body.get("action", "")
+    if a == "open_folder":
+        _open_path(_uploads_dir())
+        return {"ok": True, "msg": "Carpeta abierta"}
+    p = _file_in_folder(body.get("name", ""))
+    if p is None:
+        return {"ok": False, "msg": "No encuentro ese archivo"}
+    if a == "open":
+        _open_path(p)
+        return {"ok": True, "msg": f"Abriendo {p.name}"}
+    if a == "use":
+        ok, info = chat(body.get("text", ""), str(p))
+        return {"ok": ok, "msg": "Se lo he pasado a ZAR" if ok else info}
+    if a == "delete":
+        try:
+            trash = _uploads_dir() / ".papelera"     # not gone for good: a hidden bin inside the folder
+            trash.mkdir(exist_ok=True)
+            p.replace(trash / f"{int(time.time())}-{p.name}")
+            return {"ok": True, "msg": f"{p.name} quitado"}
+        except Exception as e:
+            return {"ok": False, "msg": f"No se pudo quitar: {e}"}
+    return {"ok": False, "msg": "Acción desconocida"}
+
+
 def chat(text: str, file_path: str = "") -> tuple[bool, str]:
     text = (text or "").strip()
     if not _text_sender:
@@ -953,7 +1016,7 @@ def speak_news() -> dict:
 # ───────────────────────── HTTP server ─────────────────────────
 
 PROTECTED = ("/news", "/weather", "/geocode", "/settings", "/open", "/news_speak", "/window",
-             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event")
+             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action")
 MAX_UPLOAD = 100 * 1024 * 1024
 
 
@@ -999,6 +1062,17 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         route = self.path.split("?")[0]
         q = parse_qs(urlparse(self.path).query)
+        if route == "/file":
+            if q.get("t", [""])[0] != _token():
+                self._send_json({"ok": False}, 403)
+                return
+            p = _file_in_folder(q.get("name", [""])[0])
+            if p is None:
+                self._send_json({"ok": False}, 404)
+                return
+            import mimetypes
+            self._send(p.read_bytes(), 200, mimetypes.guess_type(p.name)[0] or "application/octet-stream")
+            return
         if route.startswith("/ui/"):
             body = _page(route[4:])
             if body is None:
@@ -1024,6 +1098,8 @@ class _Handler(BaseHTTPRequestHandler):
                 elif route == "/boards":
                     from actions import boards
                     self._send_json(boards.api({"op": "get"}))
+                elif route == "/files":
+                    self._send_json(list_files())
                 elif route == "/world_events":
                     from actions import world_monitor
                     self._send_json({"ok": True, **world_monitor.get_events(force="refresh" in q)})
@@ -1144,6 +1220,8 @@ class _Handler(BaseHTTPRequestHandler):
             body = json.loads(self._read_body() or b"{}")
             ok, info = chat(body.get("text", ""), body.get("file", ""))
             self._send_json({"ok": ok, "info": info}, 200 if ok else 400)
+        elif route == "/files_action":
+            self._send_json(files_action(json.loads(self._read_body() or b"{}")))
         elif route == "/upload":
             data = self._read_body(limit=MAX_UPLOAD)
             path = save_upload(q.get("name", ["file"])[0], data)
