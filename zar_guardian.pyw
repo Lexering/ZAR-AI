@@ -121,9 +121,16 @@ def main():
         if reason:
             env["ALBERTO_RESTART_REASON"] = reason
         code = run_once(env)
-        if code == 0:
+        stop = LOGS / "stop.flag"
+        if code == 0 and (os.name == "nt" or stop.exists()):
+            stop.unlink(missing_ok=True)
             log("ZAR cerrado a propósito. Fin del guardián.")
             return
+        if code == 0:            # Mac: closed from the Dock / Cmd+Q -> it's a background service, start it again
+            log("ZAR se ha cerrado: lo vuelvo a abrir en segundo plano")
+            time.sleep(2)
+            reason = ""
+            continue
         reason = describe(code)
         now = time.time()
         crashes = [t for t in crashes if now - t < 600] + [now]
