@@ -194,6 +194,11 @@ BARGE_IN_ECHO_RATIO = 1.8      # Cuántas veces más fuerte que su propio eco ti
 BARGE_IN_FRAMES     = 3        # Bloques seguidos (~64 ms cada uno) por encima del umbral para cortarle
 BARGE_IN_HOLD_S     = 2.5      # Segundos que el micro queda abierto tras detectar que le hablas
 
+# Sensibilidad del micro: sube tu voz automáticamente si el micro del portátil capta bajo
+MIC_AUTO_GAIN       = True
+MIC_TARGET_RMS      = 3200     # nivel al que lleva tu voz
+MIC_GAIN_MAX        = 6.0      # como mucho multiplica tu voz por esto
+
 # Detección de fin de frase: cuanto menor, antes responde (demasiado bajo = te corta a mitad)
 SILENCE_MS          = 550
 PREFIX_PADDING_MS   = 200
@@ -1386,6 +1391,8 @@ class JarvisLive:
 
         # Estado de la interrupción por voz (barge-in)
         self._echo_rms     = 0.0      # nivel medio de su propio eco en el micro
+        self._noise_rms    = 300.0    # ruido de fondo del micro (auto gain)
+        self._speech_rms   = 1600.0   # nivel típico de tu voz (auto gain)
         self._loud_frames  = 0
         self._barge_until  = 0.0
         self._cut_until    = 0.0      # you interrupted: the rest of the old answer is not played
@@ -2127,9 +2134,23 @@ class JarvisLive:
         def _callback(indata, frames, time_info, status):
             if self.ui.muted:
                 return
-            data = indata.tobytes()
             with self._speaking_lock:
                 jarvis_speaking = self._is_speaking
+
+            # Auto gain: learns how loud your voice reaches the mic and brings it up, so you don't have to shout
+            if MIC_AUTO_GAIN:
+                r = float(np.sqrt(np.mean(indata[:, 0].astype(np.float32) ** 2)))
+                if not jarvis_speaking:
+                    if r < self._noise_rms:
+                        self._noise_rms = 0.9 * self._noise_rms + 0.1 * r
+                    else:
+                        self._noise_rms = min(self._noise_rms * 1.002, 2000.0)
+                    if r > max(self._noise_rms * 3.0, 120.0):              # someone is talking
+                        self._speech_rms = 0.95 * self._speech_rms + 0.05 * r
+                g = min(MIC_GAIN_MAX, max(1.0, MIC_TARGET_RMS / max(self._speech_rms, 1.0)))
+                if g > 1.05:
+                    indata = np.clip(indata.astype(np.float32) * g, -32768, 32767).astype(np.int16)
+            data = indata.tobytes()
 
             if self._hud is not None:
                 lvl = float(np.sqrt(np.mean(indata[:, 0].astype(np.float32) ** 2))) / 6000

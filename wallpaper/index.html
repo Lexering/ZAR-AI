@@ -178,17 +178,17 @@
       <div class="hello" id="hello">Hola</div>
       <div class="clock" id="clock">--:--</div>
       <div class="date" id="date"></div>
-      <div class="weather" id="weather"><span class="ico">⛅</span><div><div class="t">--°</div><div class="d" data-i18n="loadingWeather">…</div></div></div>
+      <div class="weather" id="weather" data-p="weather"><span class="ico">⛅</span><div><div class="t">--°</div><div class="d" data-i18n="loadingWeather">…</div></div></div>
     </section>
-    <section class="panel">
+    <section class="panel" data-p="tasks">
       <h3><span data-i18n="today">Hoy</span><span class="more" id="open-boards" data-i18n="openBoards">Abrir</span></h3>
       <div class="list" id="tasks"><div class="empty" data-i18n="noTasks">Nada pendiente</div></div>
     </section>
-    <section class="panel">
+    <section class="panel" data-p="exams">
       <h3><span data-i18n="exams">Exámenes</span></h3>
       <div id="exams"><div class="empty" data-i18n="noExams">Sin exámenes</div></div>
     </section>
-    <section class="panel folder" id="folder" role="button" tabindex="0">
+    <section class="panel folder" data-p="files" id="folder" role="button" tabindex="0">
       <h3><span data-i18n="myFiles">Mis archivos</span><span class="more" id="f-quick" data-i18n="upload">Subir</span></h3>
       <div class="fh">
         <div class="fi"><svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
@@ -226,12 +226,13 @@
       <button class="pill" data-win="chat" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg><span data-i18n="chat">Chat</span></button>
       <button class="pill" data-win="boards" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg><span data-i18n="tasks">Tareas</span></button>
       <button class="pill" data-win="world" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span data-i18n="world">Mundo</span></button>
+      <button class="pill" id="customize" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span data-i18n="customize">Personalizar</span></button>
     </div>
   </div>
 
   <!-- RIGHT -->
   <div class="col">
-    <section class="panel">
+    <section class="panel" data-p="pomodoro">
       <h3><span>Pomodoro</span></h3>
       <div class="pomo">
         <div class="ring">
@@ -249,20 +250,11 @@
         </div>
       </div>
     </section>
-    <section class="panel">
-      <h3><span data-i18n="quick">Accesos</span></h3>
-      <div class="grid" id="apps">
-        <button class="app-btn" data-app="classroom" type="button"><svg viewBox="0 0 24 24"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11v5c3 2 7 2 10 0v-5"/></svg>Classroom</button>
-        <button class="app-btn" data-app="drive" type="button"><svg viewBox="0 0 24 24"><path d="M8 3h8l5 9-4 7H7l-4-7z"/><path d="M8 3l9 16M16 3L7 19M3 12h18"/></svg>Drive</button>
-        <button class="app-btn" data-app="youtube" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>YouTube</button>
-        <button class="app-btn" data-app="scholar" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg>Scholar</button>
-        <button class="app-btn" data-app="notebooklm" type="button"><svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 0 1 2 2v16H8a2 2 0 0 1-2-2z"/><path d="M10 8h6M10 12h6"/></svg>NotebookLM</button>
-        <button class="app-btn" data-app="translate" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2c0 4-2 7-4 8M6 9c1 2 3 4 6 5"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>Translate</button>
-        <button class="app-btn" data-app="gemini" type="button"><svg viewBox="0 0 24 24"><path d="M12 3c1 5 4 8 9 9-5 1-8 4-9 9-1-5-4-8-9-9 5-1 8-4 9-9z"/></svg>Gemini</button>
-        <button class="app-btn" data-app="gmail" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Gmail</button>
-      </div>
+    <section class="panel" data-p="apps">
+      <h3><span data-i18n="quick">Accesos</span><span class="more" id="apps-edit" data-i18n="edit">Editar</span></h3>
+      <div class="grid" id="apps"></div>
     </section>
-    <section class="panel grow">
+    <section class="panel grow" data-p="news">
       <h3><span data-i18n="news">IA y mundo</span><span class="more" id="news-speak" data-i18n="listen">Escuchar</span></h3>
       <div class="news" id="news"><div class="empty">…</div></div>
     </section>
@@ -286,6 +278,10 @@
   const TOKEN = "__HUD_TOKEN__";                 // filled in automatically on each PC
   const AUTH = { "X-ZAR-Token": TOKEN };
   const DEMO = location.search.includes("demo");
+  if (location.protocol === "file:" && !DEMO) {
+    const hop = () => fetch(BASE + "/state", { cache: "no-store" }).then(r => { if (r.ok) location.replace(BASE + "/ui/index"); }).catch(() => setTimeout(hop, 3000));
+    hop();
+  }
   const $ = id => document.getElementById(id);
 
   // ───────── i18n ─────────
@@ -297,7 +293,7 @@
           OFFLINE: "ZAR se está iniciando…", DICTATING: "Dictando", focus: "Concentración", brk: "Descanso", sessions: "sesiones hoy",
           start: "Empezar", pause: "Pausa", reset: "Reiniciar", overdue: "atrasada", dueToday: "hoy", days: "días", daysOne: "día",
           todayExam: "hoy", opened: "Abriendo", offlineMsg: "Inicia ZAR primero", feels: "sensación", rain: "lluvia",
-          myFiles: "Mis archivos", upload: "Subir", uploadFiles: "Subir archivos", openFolder: "Abrir carpeta", dropHere: "Suelta aquí para subirlo",
+          customize: "Personalizar", edit: "Editar", myFiles: "Mis archivos", upload: "Subir", uploadFiles: "Subir archivos", openFolder: "Abrir carpeta", dropHere: "Suelta aquí para subirlo",
           emptyFolder: "Carpeta vacía", emptyHint: "Apuntes, PDF, fotos de la pizarra…", files: "archivos", fileOne: "archivo", last: "Último",
           emptyBig: "La carpeta está vacía.<br>Pulsa «Subir archivos» y elige apuntes, PDF o fotos.", open: "Abrir", toZar: "A ZAR", remove: "Quitar",
           sure: "¿Seguro?", uploading: "Subiendo", uploaded: "subido(s)" },
@@ -308,7 +304,7 @@
           OFFLINE: "ZAR is starting…", DICTATING: "Dictating", focus: "Focus", brk: "Break", sessions: "sessions today",
           start: "Start", pause: "Pause", reset: "Reset", overdue: "overdue", dueToday: "today", days: "days", daysOne: "day",
           todayExam: "today", opened: "Opening", offlineMsg: "Start ZAR first", feels: "feels", rain: "rain",
-          myFiles: "My files", upload: "Upload", uploadFiles: "Upload files", openFolder: "Open folder", dropHere: "Drop here to upload",
+          customize: "Customise", edit: "Edit", myFiles: "My files", upload: "Upload", uploadFiles: "Upload files", openFolder: "Open folder", dropHere: "Drop here to upload",
           emptyFolder: "Empty folder", emptyHint: "Notes, PDFs, photos of the board…", files: "files", fileOne: "file", last: "Latest",
           emptyBig: "The folder is empty.<br>Press “Upload files” and pick notes, PDFs or photos.", open: "Open", toZar: "To ZAR", remove: "Remove",
           sure: "Sure?", uploading: "Uploading", uploaded: "uploaded" },
@@ -397,7 +393,8 @@
     $("wave").setAttribute("d", "M" + pts2.join("L") + "Z");
     $("wave").setAttribute("stroke", st === "MUTED" ? "#ff6b81" : st === "THINKING" ? "#a98bff" : "#ecbea9");
   }
-  function frame(tms) { drawBg(); drawCore(tms); requestAnimationFrame(frame); }
+  let bgOn = true;
+  function frame(tms) { if (bgOn) drawBg(); drawCore(tms); requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
 
   // ───────── state polling ─────────
@@ -506,7 +503,8 @@
   const openWin = page => post(`/window?page=${page}`).then(r => r && r.ok && toast(t("opened") + "…"));
   document.querySelectorAll("[data-win]").forEach(b => b.onclick = () => openWin(b.dataset.win));
   $("open-boards").onclick = () => openWin("boards");
-  document.querySelectorAll("[data-app]").forEach(b => b.onclick = () => { toast(t("opened") + " " + b.textContent.trim() + "…"); post("/open?app=" + b.dataset.app, 45000); });
+  $("customize").onclick = () => openWin("customize");
+  $("apps-edit").onclick = () => openWin("customize");
   const toggleMute = async () => { if (DEMO) return; try { await fetch(BASE + "/mute", { method: "POST" }); } catch {} };
   $("mic").onclick = toggleMute; $("core").onclick = toggleMute;
 
@@ -586,10 +584,53 @@
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFiles(); });
   setInterval(loadFiles, 20000); setTimeout(loadFiles, 1300);
 
+
+  // ───────── desktop customisation (config/desktop.json, edited in the «Personalizar» window) ─────────
+  const APP_NAMES = { classroom: "Classroom", drive: "Drive", youtube: "YouTube", scholar: "Scholar", notebooklm: "NotebookLM", translate: "Translate",
+    gemini: "Gemini", gmail: "Gmail", whatsapp: "WhatsApp", chatgpt: "ChatGPT", outlook: "Outlook", teams: "Teams", onedrive: "OneDrive", office: "Office",
+    canva: "Canva", duolingo: "Duolingo", khan: "Khan Academy", wikipedia: "Wikipedia", spotify: "Spotify", calendar: "Calendar", docs: "Docs",
+    quizlet: "Quizlet", claude: "Claude", perplexity: "Perplexity" };
+  const APP_ICONS = {classroom: `<svg viewBox="0 0 24 24"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11v5c3 2 7 2 10 0v-5"/></svg>`,drive: `<svg viewBox="0 0 24 24"><path d="M8 3h8l5 9-4 7H7l-4-7z"/><path d="M8 3l9 16M16 3L7 19M3 12h18"/></svg>`,youtube: `<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>`,scholar: `<svg viewBox="0 0 24 24"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg>`,notebooklm: `<svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 0 1 2 2v16H8a2 2 0 0 1-2-2z"/><path d="M10 8h6M10 12h6"/></svg>`,translate: `<svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2c0 4-2 7-4 8M6 9c1 2 3 4 6 5"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>`,gemini: `<svg viewBox="0 0 24 24"><path d="M12 3c1 5 4 8 9 9-5 1-8 4-9 9-1-5-4-8-9-9 5-1 8-4 9-9z"/></svg>`,gmail: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`};
+  const LINK_ICON = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+  const STAR_ICON = '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+  const ACCENTS = {
+    rose: ["#ecbea9", "#d8ad7c", "236,190,170", 0], blue: ["#8cc8ff", "#6fa8dc", "140,200,255", 195], green: ["#9fe0b0", "#7cc39a", "159,224,176", 125],
+    violet: ["#c3a8ff", "#a58bf0", "195,168,255", 245], amber: ["#ffd08a", "#e8b060", "255,208,138", 25], red: ["#ff9a9a", "#e07a7a", "255,154,154", -20],
+  };
+  let deskRev = null;
+  function applyDesktop(d) {
+    const hidden = new Set(d.hidden || []);
+    document.querySelectorAll("[data-p]").forEach(el => el.style.display = hidden.has(el.dataset.p) ? "none" : "");
+    const a = ACCENTS[d.accent] || ACCENTS.rose, root = document.documentElement.style;
+    root.setProperty("--cyan", a[0]); root.setProperty("--teal", a[1]);
+    root.setProperty("--line", `rgba(${a[2]},.16)`); root.setProperty("--line-hi", `rgba(${a[2]},.38)`);
+    const hue = a[3] ? `hue-rotate(${a[3]}deg)` : "";
+    $("bg").style.filter = hue; document.querySelector(".core svg").style.filter = hue;
+    bgOn = d.bg !== false; $("bg").style.visibility = bgOn ? "" : "hidden";
+    $("apps").innerHTML = (d.apps || []).map((x, i) => {
+      const name = x.key ? (APP_NAMES[x.key] || x.key) : x.name;
+      const icon = x.key ? (APP_ICONS[x.key] || STAR_ICON) : LINK_ICON;
+      return `<button class="app-btn" data-i="${i}" type="button">${icon}${esc(name)}</button>`;
+    }).join("");
+    $("apps").querySelectorAll(".app-btn").forEach(b => b.onclick = () => {
+      const x = d.apps[+b.dataset.i];
+      toast(t("opened") + " " + b.textContent.trim() + "…");
+      post(x.key ? "/open?app=" + x.key : "/open?url=" + encodeURIComponent(x.url), 45000);
+    });
+    if (Array.isArray(d.pomo) && window.__zarSetPomo) window.__zarSetPomo(+d.pomo[0] || 25, +d.pomo[1] || 5);
+  }
+  async function loadDesktop() {
+    if (DEMO) { applyDesktop({ apps: Object.keys(APP_ICONS).map(k => ({ key: k })) }); return; }
+    try { const d = await api("/desktop"); if (d && d.ok) applyDesktop(d); } catch {}
+  }
+  setInterval(() => { if (live && live.desktop_rev !== undefined && live.desktop_rev !== deskRev) { deskRev = live.desktop_rev; loadDesktop(); } }, 2000);
+  setTimeout(loadDesktop, 600); setInterval(loadDesktop, 60000);
+
   // ───────── Pomodoro ─────────
   const store = { get(k, d) { try { const v = localStorage.getItem("zar-" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
                   set(k, v) { try { localStorage.setItem("zar-" + k, JSON.stringify(v)); } catch {} } };
   const LENGTHS = [[25, 5], [50, 10], [15, 3]];
+  window.__zarSetPomo = (f, b) => { LENGTHS[0] = [f, b]; if (!pomo.running && pomo.li === 0) { pomo.left = total(); } renderPomo(); };
   let pomo = store.get("pomo", { li: 0, mode: "focus", endsAt: 0, left: 25 * 60, running: false, count: 0, day: "" });
   const todayKey = new Date().toDateString();
   if (pomo.day !== todayKey) { pomo.count = 0; pomo.day = todayKey; }

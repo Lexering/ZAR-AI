@@ -301,7 +301,87 @@ WEB_APPS = {
     "scholar": "https://scholar.google.com/",
     "translate": "https://translate.google.com/",
     "notebooklm": "https://notebooklm.google.com/",
+    "outlook": "https://outlook.live.com/",
+    "teams": "https://teams.microsoft.com/",
+    "onedrive": "https://onedrive.live.com/",
+    "office": "https://www.office.com/",
+    "canva": "https://www.canva.com/",
+    "duolingo": "https://www.duolingo.com/",
+    "khan": "https://www.khanacademy.org/",
+    "wikipedia": "https://es.wikipedia.org/",
+    "spotify": "https://open.spotify.com/",
+    "calendar": "https://calendar.google.com/",
+    "docs": "https://docs.google.com/",
+    "quizlet": "https://quizlet.com/",
+    "claude": "https://claude.ai/",
+    "perplexity": "https://www.perplexity.ai/",
 }
+
+# ───────────────────────── desktop customisation (config/desktop.json) ─────────────────────────
+DESKTOP_FILE = CONFIG_DIR / "desktop.json"
+DESKTOP_DEFAULT = {
+    "hidden": [],                         # panels not shown: weather, tasks, exams, files, pomodoro, apps, news
+    "accent": "rose",                     # rose | blue | green | violet | amber | red
+    "bg": True,                           # animated background
+    "apps": [{"key": k} for k in ("classroom", "drive", "youtube", "scholar", "notebooklm", "translate", "gemini", "gmail")],
+    "pomo": [25, 5],
+}
+
+
+def load_desktop() -> dict:
+    d = dict(DESKTOP_DEFAULT)
+    try:
+        d.update(json.loads(DESKTOP_FILE.read_text(encoding="utf-8-sig")))
+    except Exception:
+        pass
+    return d
+
+
+def save_desktop(new: dict) -> dict:
+    d = load_desktop()
+    if isinstance(new.get("hidden"), list):
+        d["hidden"] = [str(x)[:20] for x in new["hidden"]][:20]
+    if str(new.get("accent", "")) in ("rose", "blue", "green", "violet", "amber", "red"):
+        d["accent"] = new["accent"]
+    if "bg" in new:
+        d["bg"] = bool(new["bg"])
+    if isinstance(new.get("apps"), list):
+        apps = []
+        for a in new["apps"][:16]:
+            if a.get("key") in WEB_APPS:
+                apps.append({"key": a["key"]})
+            elif a.get("url") and a.get("name"):
+                apps.append({"name": str(a["name"])[:24], "url": str(a["url"])[:500]})
+        d["apps"] = apps
+    if isinstance(new.get("pomo"), list) and len(new["pomo"]) == 2:
+        try:
+            d["pomo"] = [max(1, min(180, int(new["pomo"][0]))), max(1, min(60, int(new["pomo"][1])))]
+        except (TypeError, ValueError):
+            pass
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    DESKTOP_FILE.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+    d["rev"] = time.time()
+    with _lock:
+        _data["desktop_rev"] = d["rev"]
+    return d
+
+
+def open_link(target: str):
+    """Custom shortcut from the desktop: a web address, or a program / file / folder on this PC."""
+    target = (target or "").strip()
+    if not target:
+        return False, "empty"
+    if target.startswith(("http://", "https://")):
+        _open_target(target)
+        return True, "web"
+    if "." in target and " " not in target and "\\" not in target and "/" not in target[:8]:
+        _open_target("https://" + target)          # «youtube.com»
+        return True, "web"
+    p = os.path.expandvars(os.path.expanduser(target))
+    if os.path.exists(p):
+        _open_target(p)
+        return True, "path"
+    return False, "not found"
 ZAR_CONFIG = CONFIG_DIR / "zar.json"
 
 
@@ -508,7 +588,7 @@ def open_app(key: str):
 
 # ───────────────────────── chat and settings windows ─────────────────────────
 
-WINDOWS = {"chat": (440, 720), "settings": (440, 600), "world": (1320, 820), "boards": (1320, 820)}
+WINDOWS = {"chat": (440, 720), "settings": (440, 600), "customize": (560, 780), "world": (1320, 820), "boards": (1320, 820)}
 
 
 def _browser_exe():
@@ -1016,7 +1096,7 @@ def speak_news() -> dict:
 # ───────────────────────── HTTP server ─────────────────────────
 
 PROTECTED = ("/news", "/weather", "/geocode", "/settings", "/open", "/news_speak", "/window",
-             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action")
+             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action", "/desktop")
 MAX_UPLOAD = 100 * 1024 * 1024
 
 
@@ -1095,6 +1175,8 @@ class _Handler(BaseHTTPRequestHandler):
                     s = load_settings()
                     detected = detect_location() if s["location"] is None else None
                     self._send_json({"ok": True, **s, "detected": detected})
+                elif route == "/desktop":
+                    self._send_json({"ok": True, **load_desktop(), "presets": sorted(WEB_APPS)})
                 elif route == "/boards":
                     from actions import boards
                     self._send_json(boards.api({"op": "get"}))
@@ -1190,6 +1272,8 @@ class _Handler(BaseHTTPRequestHandler):
         if route == "/open":
             if "news" in q:
                 ok, info = open_news(int(q["news"][0])), "news"
+            elif "url" in q:
+                ok, info = open_link(q["url"][0])
             else:
                 ok, info = open_app(q.get("app", [""])[0])
             if not ok:
@@ -1220,6 +1304,8 @@ class _Handler(BaseHTTPRequestHandler):
             body = json.loads(self._read_body() or b"{}")
             ok, info = chat(body.get("text", ""), body.get("file", ""))
             self._send_json({"ok": ok, "info": info}, 200 if ok else 400)
+        elif route == "/desktop":
+            self._send_json({"ok": True, **save_desktop(json.loads(self._read_body() or b"{}"))})
         elif route == "/files_action":
             self._send_json(files_action(json.loads(self._read_body() or b"{}")))
         elif route == "/upload":

@@ -27,6 +27,11 @@ try { $j = Get-Content -LiteralPath (Join-Path $cfgSrc 'zar.json') -Raw -Encodin
 $keys = [ordered]@{}
 try { (Get-Content -LiteralPath (Join-Path $cfgSrc 'api_keys.json') -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $keys[$_.Name] = "$($_.Value)" } } catch {}
 
+# reinstall / update: keep the name, language and keys already on this PC
+$oldCfg = Join-Path $env:LOCALAPPDATA 'ZAR\app\config'
+try { $j = Get-Content -LiteralPath (Join-Path $oldCfg 'zar.json') -Raw -Encoding UTF8 | ConvertFrom-Json; if (-not $prof.name) { $prof.name = "$($j.name)" }; if ($j.lang) { $prof.lang = "$($j.lang)" } } catch {}
+try { (Get-Content -LiteralPath (Join-Path $oldCfg 'api_keys.json') -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties |
+      ForEach-Object { if (-not $keys[$_.Name]) { $keys[$_.Name] = "$($_.Value)" } } } catch {}
 $es = $prof.lang -ne 'en'
 function L($a, $b) { if ($es) { $a } else { $b } }
 $name = [Microsoft.VisualBasic.Interaction]::InputBox((L "¿Cómo te llamas? ZAR te llamará por tu nombre." "What's your name? ZAR will call you by it."), 'ZAR', $prof.name)
