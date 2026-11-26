@@ -189,10 +189,10 @@ VOICE_NAME = "Puck"   # friendly, upbeat voice
 
 # Interrumpir a ZAR hablándole encima (como Tony con JARVIS)
 BARGE_IN            = True     # False = el micro se apaga mientras habla (comportamiento antiguo)
-BARGE_IN_MIN_RMS    = 1400     # Volumen mínimo de tu voz para cortarle. Súbelo si se corta solo.
-BARGE_IN_ECHO_RATIO = 2.5      # Cuántas veces más fuerte que su propio eco tiene que ser tu voz
+BARGE_IN_MIN_RMS    = 1000     # Volumen mínimo de tu voz para cortarle. Súbelo si se corta solo.
+BARGE_IN_ECHO_RATIO = 1.8      # Cuántas veces más fuerte que su propio eco tiene que ser tu voz
 BARGE_IN_FRAMES     = 3        # Bloques seguidos (~64 ms cada uno) por encima del umbral para cortarle
-BARGE_IN_HOLD_S     = 1.5      # Segundos que el micro queda abierto tras detectar que le hablas
+BARGE_IN_HOLD_S     = 2.5      # Segundos que el micro queda abierto tras detectar que le hablas
 
 # Detección de fin de frase: cuanto menor, antes responde (demasiado bajo = te corta a mitad)
 SILENCE_MS          = 550
@@ -1388,6 +1388,7 @@ class JarvisLive:
         self._echo_rms     = 0.0      # nivel medio de su propio eco en el micro
         self._loud_frames  = 0
         self._barge_until  = 0.0
+        self._cut_until    = 0.0      # you interrupted: the rest of the old answer is not played
         self._prebuffer: list[bytes] = []
         self._use_audio_kw = True     # send_realtime_input(audio=...) o el antiguo media=...
 
@@ -2199,6 +2200,9 @@ class JarvisLive:
                         self._queue_mic(loop, chunk)
                     self._prebuffer.clear()
                     self._loud_frames = 0
+                    # stop talking right away (don't wait for Gemini) and drop the rest of that answer
+                    self._cut_until = now + 8.0
+                    loop.call_soon_threadsafe(self._flush_playback)
                     print(f"[ZAR] Interrupción detectada (voz {rms:.0f} > umbral {threshold:.0f})")
             else:
                 self._loud_frames = 0
@@ -2258,6 +2262,8 @@ class JarvisLive:
                             self._turn_done_event.clear()
                         # Trozos de ~100 ms: así una interrupción corta el audio al instante
                         data = response.data
+                        if time.monotonic() < self._cut_until:
+                            data = b""            # the answer you interrupted: don't play the rest
                         step = RECEIVE_SAMPLE_RATE // 10 * 2
                         for i in range(0, len(data), step):
                             self.audio_in_queue.put_nowait(data[i:i + step])
@@ -2275,6 +2281,7 @@ class JarvisLive:
                         sc = response.server_content
 
                         if getattr(sc, "interrupted", False):
+                            self._cut_until = 0.0
                             self._flush_playback()
                             if out_buf:
                                 said = " ".join(out_buf).strip()
@@ -2292,6 +2299,7 @@ class JarvisLive:
                                 in_buf.append(txt)
 
                         if sc.turn_complete:
+                            self._cut_until = 0.0
                             if self._turn_done_event:
                                 self._turn_done_event.set()
 
