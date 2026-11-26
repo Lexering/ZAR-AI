@@ -113,7 +113,17 @@ if img:
 PYEOF
 
 # ---------- 6. Start at login, in the background ----------
+# macOS only asks for the microphone for real apps, so the assistant starts through a tiny
+# invisible app ($APP_NAME.app) that carries the microphone permission.
 say "Configurando el arranque automático..."
+BUNDLE="$DEST/$APP_NAME.app"
+rm -rf "$BUNDLE"
+osacompile -o "$BUNDLE" -e "do shell script \"cd \" & quoted form of \"$APP\" & \" && pgrep -f '[${GUARD:0:1}]${GUARD:1}' >/dev/null || nohup \" & quoted form of \"$PY\" & \" '$GUARD' >> logs/launchd.log 2>&1 &\""
+PB=/usr/libexec/PlistBuddy; IPL="$BUNDLE/Contents/Info.plist"
+$PB -c "Set :CFBundleIdentifier $APP_ID.app" "$IPL" 2>/dev/null || $PB -c "Add :CFBundleIdentifier string $APP_ID.app" "$IPL"
+$PB -c "Add :NSMicrophoneUsageDescription string $APP_NAME necesita el micrófono para escucharte." "$IPL" 2>/dev/null
+$PB -c "Add :LSUIElement bool true" "$IPL" 2>/dev/null
+codesign --force --deep --sign - "$BUNDLE" 2>/dev/null
 PLIST="$HOME/Library/LaunchAgents/$APP_ID.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$PLIST" <<EOF
@@ -121,15 +131,12 @@ cat > "$PLIST" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>$APP_ID</string>
-  <key>ProgramArguments</key><array><string>$PY</string><string>$APP/$GUARD</string></array>
-  <key>WorkingDirectory</key><string>$APP</string>
+  <key>ProgramArguments</key><array><string>/usr/bin/open</string><string>-g</string><string>-j</string><string>$BUNDLE</string></array>
   <key>RunAtLoad</key><true/>
-  <key>ProcessType</key><string>Interactive</string>
-  <key>StandardOutPath</key><string>$APP/logs/launchd.log</string>
-  <key>StandardErrorPath</key><string>$APP/logs/launchd.log</string>
 </dict></plist>
 EOF
 launchctl bootout "gui/$(id -u)/$APP_ID" 2>/dev/null
+pkill -f "$GUARD" 2>/dev/null; pkill -f "$APP/main.py" 2>/dev/null; sleep 1
 launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || launchctl load -w "$PLIST"
 
 # ---------- 7. Animated wallpaper (built in, no extra app needed) ----------
