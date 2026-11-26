@@ -319,12 +319,15 @@ WEB_APPS = {
 
 # ───────────────────────── desktop customisation (config/desktop.json) ─────────────────────────
 DESKTOP_FILE = CONFIG_DIR / "desktop.json"
+VOICES = ["Fenrir", "Puck", "Charon", "Orus", "Achird", "Algenib", "Umbriel", "Enceladus", "Iapetus", "Sadachbia",
+          "Kore", "Aoede", "Leda", "Zephyr", "Laomedeia", "Despina", "Callirrhoe", "Sulafat", "Achernar", "Vindemiatrix"]
 DESKTOP_DEFAULT = {
     "hidden": [],                         # panels not shown: weather, tasks, exams, files, pomodoro, apps, notes
     "accent": "rose",                     # rose | blue | green | violet | amber | red
     "bg": True,                           # animated background
     "apps": [{"key": k} for k in ("classroom", "drive", "youtube", "scholar", "notebooklm", "translate", "gemini", "gmail")],
     "pomo": [25, 5],
+    "voice": "Fenrir",
 }
 
 
@@ -354,6 +357,10 @@ def save_desktop(new: dict) -> dict:
             elif a.get("url") and a.get("name"):
                 apps.append({"name": str(a["name"])[:24], "url": str(a["url"])[:500], **({"icon": icon} if icon else {})})
         d["apps"] = apps
+    voice_changed = False
+    if isinstance(new.get("voice"), str) and new["voice"] in VOICES and new["voice"] != d.get("voice"):
+        d["voice"] = new["voice"]
+        voice_changed = True
     if isinstance(new.get("pomo"), list) and len(new["pomo"]) == 2:
         try:
             d["pomo"] = [max(1, min(180, int(new["pomo"][0]))), max(1, min(60, int(new["pomo"][1])))]
@@ -364,6 +371,12 @@ def save_desktop(new: dict) -> dict:
     d["rev"] = time.time()
     with _lock:
         _data["desktop_rev"] = d["rev"]
+    if voice_changed:       # the voice is set when ZAR connects: restart quickly (the guardian starts it again)
+        def _restart():
+            time.sleep(1.5)
+            print(f"[ZAR] Voz cambiada a {d['voice']}: reinicio")
+            os._exit(75)
+        threading.Thread(target=_restart, daemon=True).start()
     return d
 
 

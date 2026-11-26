@@ -18,8 +18,8 @@ import time
 
 import numpy as np
 
-WAKE_WORDS = ["zar", "oye zar", "hola zar", "ey zar", "hey zar", "sar", "oye sar", "czar", "hola sar"]
-_WAKE_RE = re.compile(r"\b(zar|sar|tsar|czar)\b")
+WAKE_WORDS = ["zar", "oye zar", "hola zar", "ey zar", "hey zar", "sar", "oye sar", "czar", "hola sar", "zas", "zara", "tsar"]
+_WAKE_RE = re.compile(r"\b(zar|sar|tsar|czar|zara|zarr|sarr)\b")
 SAMPLE_RATE = 16000
 
 

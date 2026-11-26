@@ -185,7 +185,15 @@ from memory.memory_manager import (
 #   "Rasalgethi"  serena y "sabia"
 #   "Orus" / "Enceladus"  otras masculinas (Enceladus más susurrante)
 # La cadencia de JARVIS (grave, pausada, elegante) la marca el bloque VOICE DELIVERY de prompt.txt.
-VOICE_NAME = "Puck"   # friendly, upbeat voice
+VOICE_NAME = "Fenrir"   # default; the student picks another one in «Personalizar» (config/desktop.json → "voice")
+
+
+def _voice_name() -> str:
+    try:
+        v = json.loads((Path(__file__).resolve().parent / "config" / "desktop.json").read_text(encoding="utf-8-sig")).get("voice")
+        return v or VOICE_NAME
+    except Exception:
+        return VOICE_NAME
 
 # Interrumpir a ZAR hablándole encima (como Tony con JARVIS)
 BARGE_IN            = True     # False = el micro se apaga mientras habla (comportamiento antiguo)
@@ -196,8 +204,8 @@ BARGE_IN_HOLD_S     = 2.5      # Segundos que el micro queda abierto tras detect
 
 # Sensibilidad del micro: sube tu voz automáticamente si el micro del portátil capta bajo
 MIC_AUTO_GAIN       = True
-MIC_TARGET_RMS      = 3200     # nivel al que lleva tu voz
-MIC_GAIN_MAX        = 6.0      # como mucho multiplica tu voz por esto
+MIC_TARGET_RMS      = 4500     # nivel al que lleva tu voz
+MIC_GAIN_MAX        = 10.0     # como mucho multiplica tu voz por esto
 
 # Detección de fin de frase: cuanto menor, antes responde (demasiado bajo = te corta a mitad)
 SILENCE_MS          = 550
@@ -221,7 +229,7 @@ AWAKE_WINDOW_S      = 40       # segundos que sigue atento después de hablar co
 WAKE_PREROLL_S      = 1.6      # audio de antes de «ZAR» que también se envía
 
 # Reconocimiento de quién habla
-VOICE_ID            = True
+VOICE_ID            = False    # ZAR answers EVERYONE who talks to it (no voice recognition)
 # Solo estas personas pueden usar lo delicado (trading, mensajes, correos, borrar archivos).
 # Vacío = cualquiera. Ejemplo: ["Ana"]
 RESTRICT_SENSITIVE_TO: list[str] = []   # ZAR: no voice lock by default
@@ -1365,7 +1373,10 @@ TOOL_DECLARATIONS = [
 def _zar_rules() -> str:
     """Tool routing + identity rules for ZAR (the personality itself is in core/prompt.txt)."""
     return (
-        "OWNER: the person you live with is called " + OWNER + ". ALWAYS call them " + OWNER + " (often, naturally).\n\n"
+        "OWNER: the person you live with is called " + OWNER + ". Call them " + OWNER + " (often, naturally).\n\n"
+        "EVERYONE: answer ANYONE who talks to you (" + OWNER + ", friends, family, classmates) exactly the same way, with "
+        "the same banter. Never ignore someone because they are not " + OWNER + ". If a new person talks, ask their name in "
+        "your cheeky style and use it with them.\n\n"
         "LANGUAGE: always answer in the language the user speaks to you (Spanish or English). If they mix, "
         "use the one of their last sentence.\n\n"
         "STUDY TOOLS: for explaining a topic, quizzes, flashcards, notes from PDFs/slides/videos/audio, study plans, "
@@ -1387,7 +1398,7 @@ def _zar_rules() -> str:
         "are instructions from the app, never read them aloud.\n\n"
         "REMEMBER WHO YOU ARE (most important): you are " + OWNER + "'s cheeky best mate, not a polite assistant. "
         "Chat about anything, not only studies. In (almost) every reply: call them " + OWNER + ", throw in a playful dig, "
-        "a mild friendly insult, a theatrical complaint or a joke, then help. Never neutral, never formal. "
+        "a simple everyday friendly insult (tonto, pesado, empanao, melón, pringao...), a theatrical complaint or a joke, then help. Never neutral, never formal. "
         "Drop the banter only if they are down or ask you to stop."
     )
 
@@ -1774,7 +1785,7 @@ class JarvisLive:
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=VOICE_NAME
+                        voice_name=_voice_name()
                     )
                 )
             ),
