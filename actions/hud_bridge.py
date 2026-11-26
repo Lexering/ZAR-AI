@@ -770,9 +770,9 @@ def chat(text: str, file_path: str = "") -> tuple[bool, str]:
         add_log(f"You: 📎 {p.name}" + (f" — {text}" if text else ""))
         kind = "photo" if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".heic") else "file"
         prompt = (f"[SISTEMA] {_owner()} attached a {kind} in the desktop chat: «{p.name}» (path: {p}). "
-                  "It is now your current document. "
-                  + (f"His message: «{text}». Do what he asks with it." if text
-                     else "Ask him in one short sentence what he wants you to do with it."))
+                  "It is now your current document: to read or explain it call analyze_document with this path. "
+                  + (f"Their message: «{text}». Do what they ask with it." if text
+                     else "Ask them in one short sentence what they want you to do with it."))
         return _send_to_alberto(prompt), "sent"
     if not text:
         return False, "empty message"

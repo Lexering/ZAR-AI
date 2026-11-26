@@ -22,7 +22,9 @@ from pathlib import Path
 
 TEXT_MODELS = ["gemini-2.5-flash", "gemini-flash-latest"]   # se prueba en orden
 SUMMARY_MAX_SPOKEN = 900                                     # caracteres que se devuelven para decir en voz alta
-DOC_EXTS = {".pdf", ".docx", ".txt", ".md", ".pptx", ".rtf", ".csv"}
+DOC_EXTS = {".pdf", ".docx", ".txt", ".md", ".pptx", ".rtf", ".csv", ".xlsx", ".odt", ".html", ".json",
+            ".jpg", ".jpeg", ".png", ".webp", ".heic"}
+IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 INLINE_LIMIT = 18 * 1024 * 1024                              # PDFs más grandes se suben como archivo
 
 
@@ -279,10 +281,13 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", s).strip()
 
 
-def _candidates(max_depth: int = 2):
+def _candidates(max_depth: int = 3):
     seen = set()
-    for key in ("downloads", "desktop", "documents"):
-        root = known_folder(key)
+    roots = [output_dir() / "Uploads"] + [known_folder(k) for k in ("downloads", "desktop", "documents")]
+    od = Path(os.environ.get("OneDrive", "")) if os.environ.get("OneDrive") else None
+    if od and od.exists():
+        roots.append(od)
+    for root in roots:
         if not root.exists():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
@@ -338,6 +343,22 @@ def read_text(path: Path) -> str:
             for row in t.rows:
                 parts.append(" | ".join(c.text.strip() for c in row.cells))
         return "\n".join(parts)
+    if ext == ".xlsx":
+        from openpyxl import load_workbook
+        wb = load_workbook(str(path), read_only=True, data_only=True)
+        out = []
+        for ws in wb.worksheets:
+            out.append(f"[Hoja {ws.title}]")
+            for row in ws.iter_rows(values_only=True):
+                if any(v is not None for v in row):
+                    out.append(" | ".join("" if v is None else str(v) for v in row))
+                if len(out) > 4000:
+                    break
+        return "\n".join(out)
+    if ext == ".odt":
+        import zipfile
+        xml = zipfile.ZipFile(str(path)).read("content.xml").decode("utf-8", "ignore")
+        return re.sub(r"<[^>]+>", " ", xml)
     if ext == ".pptx":
         from pptx import Presentation
         out = []
@@ -386,6 +407,71 @@ def summarize_document(path: Path, detail: str = "medio", focus: str = "", clien
     data.setdefault("title", f"Resumen: {path.stem}")
     data["subtitle"] = f"Documento original: {path.name}"
     return data
+
+
+# ═══════════════════════════ ANALIZAR / EXPLICAR ═══════════════════════════
+ANALYZE_PROMPT = """Eres ZAR y el usuario te ha pasado este archivo. Haz exactamente lo que pide:
+«{task}»
+- Si pide explicarlo: explícalo claro y fácil, como a un amigo, con ejemplos si ayudan; empieza por la idea general
+  y luego lo importante, en orden.
+- Si hace una pregunta concreta, respóndela usando el archivo (y di si el archivo no lo dice).
+- Si son ejercicios o un examen: explica cómo se resuelven paso a paso.
+- Si es una foto (apuntes, pizarra, ejercicio, captura), léela y trabaja con lo que pone.
+Escribe en {lang}, en texto corrido pensado para decirlo en voz alta (sin tablas ni markdown, sin asteriscos),
+máximo unas 350 palabras salvo que pida más detalle."""
+
+
+def _file_part(path: Path, client=None):
+    """The file as something Gemini can read: PDF/images directly, the rest as text."""
+    ext = path.suffix.lower()
+    if ext == ".pdf" or ext in IMG_EXTS:
+        from google.genai import types
+        mime = "application/pdf" if ext == ".pdf" else {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+                                                        ".webp": "image/webp", ".heic": "image/heic"}[ext]
+        data = path.read_bytes()
+        if len(data) <= INLINE_LIMIT:
+            return types.Part.from_bytes(data=data, mime_type=mime)
+        client = client or _gemini()
+        part = client.files.upload(file=str(path))
+        for _ in range(60):
+            if str(getattr(part, "state", "ACTIVE")).endswith("ACTIVE"):
+                break
+            time.sleep(2)
+            part = client.files.get(name=part.name)
+        return part
+    if ext == ".doc":
+        raise RuntimeError("Los .doc antiguos no los leo: conviértelo a Word (.docx) o PDF con office_pdf.")
+    text = read_text(path)
+    if not text.strip():
+        raise RuntimeError("El archivo no tiene texto que pueda leer.")
+    return f"ARCHIVO «{path.name}»:\n\n{text[:900_000]}"
+
+
+def analyze_document(path: Path, task: str = "", lang: str = "español") -> str:
+    task = task.strip() or "Explícame este documento"
+    return generate([_file_part(path), ANALYZE_PROMPT.format(task=task, lang=lang)])
+
+
+def analyze_document_tool(parameters: dict, player=None, speak=None) -> str:
+    p = parameters or {}
+    query = (p.get("file") or "").strip()
+    if not query and player is not None and getattr(player, "current_file", None):
+        query = str(player.current_file)
+    path = find_document(query)
+    if path is None:
+        return (f"No encuentro ningún archivo que coincida con «{query}» (busco en Mis archivos, Descargas, Escritorio, "
+                "Documentos y OneDrive). Pide al usuario el nombre exacto o que lo suba con la carpeta Mis archivos.")
+    try:
+        answer = analyze_document(path, p.get("task") or p.get("question") or "", p.get("lang") or "español")
+    except Exception as e:
+        return f"No pude analizar «{path.name}»: {e}"
+    if player is not None and hasattr(player, "write_log"):
+        try:
+            player.write_log(f"Archivo analizado: {path.name}")
+        except Exception:
+            pass
+    return (f"Archivo: {path.name}. Lo que he sacado (cuéntaselo con tus palabras y tu estilo, sin leerlo como un robot):\n"
+            + answer[:4500])
 
 
 # ═══════════════════════════ HERRAMIENTAS PARA ZAR ═══════════════════════════

@@ -32,10 +32,10 @@ import numpy as np
 SAMPLE_RATE = 16000
 
 # Detección de frases por silencio (bloques de 1024 muestras ≈ 64 ms)
-MIN_RMS          = 450      # volumen mínimo para considerar que hablas
-NOISE_RATIO      = 3.0      # o 3 veces el ruido de fondo, lo que sea mayor
-START_FRAMES     = 2        # bloques seguidos con voz para empezar una frase
-END_SILENCE_S    = 0.9      # silencio que cierra una frase
+MIN_RMS          = 140      # volumen mínimo para considerar que hablas (bajo: portátiles con micro flojo)
+NOISE_RATIO      = 2.6      # o este múltiplo del ruido de fondo, lo que sea mayor
+START_FRAMES     = 3        # bloques seguidos con voz para empezar una frase
+END_SILENCE_S    = 1.1      # silencio que cierra una frase
 MAX_UTTERANCE_S  = 25       # corta frases muy largas para no esperar demasiado
 MIN_SPEECH_S     = 0.3
 PREROLL_FRAMES   = 5
@@ -84,7 +84,11 @@ def _norm(s: str) -> str:
 
 
 def _to_wav(frames: list[np.ndarray]) -> bytes:
-    pcm = np.concatenate(frames).astype(np.int16).tobytes()
+    a = np.concatenate(frames).astype(np.float32)
+    peak = float(np.max(np.abs(a))) if a.size else 0.0
+    if 0 < peak < 20000:                        # quiet mic: bring the phrase up so the transcription hears it well
+        a *= min(12.0, 26000.0 / peak)
+    pcm = np.clip(a, -32768, 32767).astype(np.int16).tobytes()
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SAMPLE_RATE)
@@ -101,7 +105,9 @@ def gemini_transcribe(wav: bytes, context: str) -> str:
 
 class Dictation:
     def __init__(self, transcribe=gemini_transcribe, log=print, on_finish=None, title: str = "",
-                 folder: Path | None = None, open_when_done: bool = True):
+                 folder: Path | None = None, open_when_done: bool = True, target: str = "pdf"):
+        self.target = "type" if str(target).lower() in ("type", "escribir", "cursor", "aqui", "aquí") else "pdf"
+        self._typed: list[str] = []
         from actions import documents
         self.documents = documents
         self.transcribe = transcribe
@@ -120,7 +126,7 @@ class Dictation:
         self._q: queue.Queue = queue.Queue()
         self._lock = threading.Lock()
         # estado del detector de voz
-        self._noise = 300.0
+        self._noise = 150.0
         self._buf: list[np.ndarray] = []
         self._pre: list[np.ndarray] = []
         self._loud = 0
@@ -192,7 +198,8 @@ class Dictation:
                     self.last_voice = time.monotonic()
             else:
                 self._loud = 0
-                self._noise = 0.95 * self._noise + 0.05 * rms
+            # background noise: follows quickly down, slowly up (so speech doesn't raise it)
+            self._noise = 0.9 * self._noise + 0.1 * rms if rms < self._noise else min(self._noise * 1.003, 3000.0)
             return
 
         self._buf.append(x)
@@ -251,7 +258,25 @@ class Dictation:
                         removed = self.paragraphs[i].pop()
                         self.log(f"DICTADO: borrado «{removed[:60]}»")
                     # el párrafo vacío se conserva: así un «punto y aparte» anterior no se pierde
+            if self.target == "type" and self._typed:
+                _backspace(len(self._typed.pop()))
             self._save()
+            text = ""
+
+        if text and self.target == "type":
+            for p in PARA_PATTERNS:
+                text = re.sub(p.replace("parrafo", "p[aá]rrafo"), "[PARRAFO]", text, flags=re.IGNORECASE)
+            for n, piece in enumerate(text.split("[PARRAFO]")):
+                if n > 0:
+                    _press_enter()
+                piece = piece.strip(" ,")
+                if piece:
+                    chunk = piece + " "
+                    _type_text(chunk)
+                    self._typed.append(chunk)
+            self.log(f"DICTADO: {text.replace('[PARRAFO]', ' ¶ ').strip()}")
+            with self._lock:
+                self.paragraphs[-1].append(text.replace("[PARRAFO]", " "))
             text = ""
 
         if text:
@@ -288,6 +313,8 @@ class Dictation:
                 "sections": [{"heading": "", "paragraphs": paras or ["(Sin texto todavía)"], "bullets": []}]}
 
     def _save(self):
+        if getattr(self, "target", "pdf") == "type":
+            return
         try:
             with self._lock:
                 doc = self._doc()
@@ -309,7 +336,7 @@ class Dictation:
         self._save()
         words = self.word_count()
         self.log(f"DICTADO: terminado · {words} palabras · {self.path.name}")
-        if self.open_when_done:
+        if self.open_when_done and self.target == "pdf":
             self.documents.open_file(self.path)
         if self.on_finish:
             try:
@@ -317,6 +344,36 @@ class Dictation:
             except Exception:
                 pass
         return self.path
+
+
+# ── escribir donde está el cursor (modo «type») ──
+def _type_text(text: str):
+    """Pastes the text in the active window (works with accents and ñ, unlike simulated typing)."""
+    import pyautogui
+    import pyperclip
+    try:
+        old = pyperclip.paste()
+    except Exception:
+        old = None
+    pyperclip.copy(text)
+    time.sleep(0.05)
+    pyautogui.hotkey("ctrl", "v")
+    time.sleep(0.15)
+    if old is not None:
+        try:
+            pyperclip.copy(old)
+        except Exception:
+            pass
+
+
+def _press_enter():
+    import pyautogui
+    pyautogui.press("enter")
+
+
+def _backspace(n: int):
+    import pyautogui
+    pyautogui.press("backspace", presses=max(0, n), interval=0.005)
 
 
 # ═══════════════════════════ INTEGRACIÓN CON ZAR ═══════════════════════════
@@ -356,20 +413,24 @@ def dictation_tool(parameters: dict, player=None, speak=None) -> str:
         if is_active():
             return f"Ya hay un dictado en marcha ({_current.word_count()} palabras)."
 
+        target = p.get("target") or "pdf"
+
         def finished(path: Path, words: int):
             _hud(False)
             if speak:
-                speak(f"[SISTEMA] El dictado ha terminado: {words} palabras, guardado como PDF en {path.name} "
-                      "y abierto en pantalla. Díselo al usuario en una frase corta.")
+                where = ("escrito donde estaba el cursor" if _current is not None and _current.target == "type"
+                         else f"guardado como PDF en {path.name} y abierto en pantalla")
+                speak(f"[SISTEMA] El dictado ha terminado: {words} palabras, {where}. Díselo al usuario en una frase corta.")
 
         try:
-            _current = Dictation(log=log, on_finish=finished, title=(p.get("title") or "").strip())
+            _current = Dictation(log=log, on_finish=finished, title=(p.get("title") or "").strip(), target=target)
         except Exception as e:
             return f"No pude empezar el dictado: {e}"
         _hud(True)
         return ("Dictado iniciado. Di al usuario en UNA frase muy corta que empiece a hablar "
                 "(por ejemplo «Adelante, te escucho») y que diga «fin del dictado» (o pulse Ctrl+Alt+M) para terminar. "
-                "Después quédate en silencio: lo que diga se escribe en el PDF, no te lo dice a ti.")
+                + ("Lo que diga se escribirá donde está el cursor (que lo deje en el documento o chat). " if _current.target == "type" else "")
+                + "Después quédate en silencio: lo que diga se escribe, no te lo dice a ti.")
 
     if action == "stop":
         if not is_active():

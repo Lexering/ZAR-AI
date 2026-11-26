@@ -939,10 +939,31 @@ TOOL_DECLARATIONS = [
         }
     },
     {
+        "name": "analyze_document",
+        "description": (
+            "Reads a file on this PC (PDF, Word, PowerPoint, Excel, text, or a PHOTO of notes/board/exercise) and does what "
+            "the user asks with it: explain it, answer a question about it, solve its exercises, translate, make it simpler... "
+            "Use it for 'analiza/explícame/lee este documento', 'qué dice el PDF de…', 'resuélveme los ejercicios de…', "
+            "'mira esta foto de mis apuntes'. ALWAYS use this instead of saying you can't read files. "
+            "file = path, words of the name, or 'último' (newest file: Mis archivos, Downloads, Desktop, Documents, OneDrive)."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "file": {"type": "STRING", "description": "Path, words of the file name, or 'último'"},
+                "task": {"type": "STRING", "description": "What the user wants, in their words (e.g. 'explícamelo fácil', 'qué es el punto 3')"},
+                "lang": {"type": "STRING", "description": "Language of the answer: español (default) or English"},
+            },
+            "required": []
+        }
+    },
+    {
         "name": "dictation",
         "description": (
-            "Voice dictation to PDF. action=start begins dictation: from then on everything the user says "
-            "is transcribed into a PDF (not sent to you) until they say 'fin del dictado'. "
+            "Voice dictation. action=start begins dictation: from then on everything the user says is transcribed "
+            "(not sent to you) until they say 'fin del dictado'. target=type writes it where the cursor is (Word, Google "
+            "Docs, an email, WhatsApp...): use it when they say 'escribe lo que digo', 'dicta en Word', 'dictado aquí' or "
+            "they are clearly writing in an app. target=pdf (default otherwise) makes a PDF document. "
             "Use when the user asks to dictate, take dictation, or write down what they say. "
             "action=stop ends it, action=status reports progress."
         ),
@@ -951,6 +972,7 @@ TOOL_DECLARATIONS = [
             "properties": {
                 "action": {"type": "STRING", "description": "start | stop | status"},
                 "title":  {"type": "STRING", "description": "Optional document title"},
+                "target": {"type": "STRING", "description": "pdf | type (write where the cursor is)"},
             },
             "required": ["action"]
         }
@@ -1385,7 +1407,9 @@ def _zar_rules() -> str:
         "or summariser, or asks another AI, call agente (modo=equipo for the team). If they say an agent answer was "
         "good/bad or correct it, call valorar_respuesta; to teach a rule call ensenar_regla; ver_aprendizaje shows it.\n\n"
         "MUSIC: always use music_player (YouTube in the background), never Spotify or the browser.\n\n"
-        "DOCUMENTS: write a document with create_document; summarise a file with summarize_document; dictation with "
+        "DOCUMENTS: to read, analyse or explain ANY file (or answer questions about it, solve its exercises, read a photo "
+        "of notes) use analyze_document; never say you can't read a file. Write a document with create_document; "
+        "summarise a file with summarize_document; dictation with "
         "dictation (say one very short sentence, then silence). For a file the user names, load it with use_document "
         "and then use file_processor. Convert Word/Excel/PowerPoint/PDF, PDF to Word, merge/split/compress/rotate/"
         "password PDFs, open in LibreOffice or print: office_pdf.\n\n"
@@ -1939,6 +1963,11 @@ class JarvisLive:
             elif name == "summarize_document":
                 r = await loop.run_in_executor(None, lambda: summarize_document(parameters=args, player=self.ui, speak=self.speak))
                 result = r or "Done."
+            elif name == "analyze_document":
+                from actions.documents import analyze_document_tool
+                if not args.get("file") and self.ui.current_file:
+                    args["file"] = str(self.ui.current_file)
+                result = await loop.run_in_executor(None, lambda: analyze_document_tool(args, player=self.ui, speak=self.speak))
             elif name == "dictation":
                 r = await loop.run_in_executor(None, lambda: dictation(parameters=args, player=self.ui, speak=self.speak))
                 result = r or "Done."
@@ -2222,6 +2251,7 @@ class JarvisLive:
             with self._speaking_lock:
                 jarvis_speaking = self._is_speaking
 
+            raw_in = indata          # dictation gets the untouched audio (it has its own level detection)
             # Auto gain: learns how loud your voice reaches the mic and brings it up, so you don't have to shout
             if MIC_AUTO_GAIN:
                 r = float(np.sqrt(np.mean(indata[:, 0].astype(np.float32) ** 2)))
@@ -2246,7 +2276,7 @@ class JarvisLive:
             is_dict = getattr(dict_mod, "is_active", None)      # puede estar a medio importar
             if is_dict is not None and is_dict():
                 if not jarvis_speaking:
-                    dict_mod.feed(indata.copy())
+                    dict_mod.feed(raw_in.copy())
                 return
 
             # Registro de una voz nueva: el audio va solo al registro
