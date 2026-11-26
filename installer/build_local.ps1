@@ -2,6 +2,7 @@
 # (a folder with «Instalar ZAR.bat»; no .exe, so Windows 11 "Smart App Control" doesn't block it).
 # Run it with Crear_instalador.bat (double-click). It asks for the student's name and keys in small windows.
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName Microsoft.VisualBasic
 Add-Type -AssemblyName System.Windows.Forms
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path        # ...\installer

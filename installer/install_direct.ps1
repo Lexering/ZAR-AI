@@ -2,6 +2,7 @@
 # Started by "Instalar ZAR.bat" from the folder made by Crear_instalador.bat. Shows a small progress window, no console.
 param([Parameter(Mandatory = $true)][string]$Pkg)        # ...\ZAR-<alumno>\zar  (app files + installer\deps + config)
 $ErrorActionPreference = 'Continue'
+$ProgressPreference = 'SilentlyContinue'      # Invoke-WebRequest is very slow with its progress bar
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing, Microsoft.VisualBasic
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
@@ -97,7 +98,10 @@ try {
                 Status (L 'Descargando el fondo animado...' 'Downloading the animated wallpaper...') 5
                 $rel = Invoke-RestMethod 'https://api.github.com/repos/rocksdanister/lively/releases/latest' -UseBasicParsing
                 $asset = $rel.assets | Where-Object { $_.name -like 'lively_setup_x86_full_*.exe' } | Select-Object -First 1
-                if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile (Join-Path $Deps 'lively_setup.exe') -UseBasicParsing }
+                if ($asset) {    # big file: download in the background so the window keeps responding
+                    $t2 = (New-Object Net.WebClient).DownloadFileTaskAsync($asset.browser_download_url, (Join-Path $Deps 'lively_setup.exe'))
+                    while (-not $t2.IsCompleted) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
+                }
                 $cu = $rel.assets | Where-Object { $_.name -eq 'lively_command_utility.zip' } | Select-Object -First 1
                 if ($cu) {
                     $z = Join-Path $Deps 'cu.zip'
