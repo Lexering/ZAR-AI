@@ -404,6 +404,8 @@ BASE_DIR        = get_base_dir()
 API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
 PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
 LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+# if Google's service is overloaded (error 1011 «service unavailable») several times in a row, use these for a while
+LIVE_FALLBACKS      = ["models/gemini-2.5-flash-native-audio-preview-09-2025", "models/gemini-live-2.5-flash-preview"]
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000
 RECEIVE_SAMPLE_RATE = 24000
@@ -2565,6 +2567,33 @@ class JarvisLive:
             stream.stop()
             stream.close()
 
+    def _live_model(self) -> str:
+        """Main voice model, or a fallback while Google's main one is failing («service unavailable»)."""
+        st = getattr(self, "_live_fb", None)
+        if st and time.monotonic() < st["until"]:
+            return st["model"]
+        return LIVE_MODEL
+
+    def _note_live_error(self, e):
+        txt = str(e).lower()
+        st = getattr(self, "_live_fb", None)
+        if st and time.monotonic() < st["until"] and any(k in txt for k in ("not found", "404", "not supported", "unsupported", "invalid model")):
+            print(f"[ZAR] {st['model']} no está disponible: vuelvo al modelo principal")
+            self._live_fb = None
+            return
+        if "1011" not in txt and "unavailable" not in txt and "overloaded" not in txt and "1013" not in txt:
+            return
+        now = time.monotonic()
+        errs = [t for t in getattr(self, "_live_errs", []) if now - t < 180] + [now]
+        self._live_errs = errs
+        if len(errs) >= 3:
+            cur = self._live_model()
+            chain = [LIVE_MODEL] + LIVE_FALLBACKS
+            nxt = chain[(chain.index(cur) + 1) % len(chain)] if cur in chain else LIVE_FALLBACKS[0]
+            self._live_fb = {"model": nxt, "until": now + 3600}
+            self._live_errs = []
+            print(f"[ZAR] Google falla con {cur}: uso {nxt} durante una hora")
+
     async def run(self):
         client = genai.Client(
             api_key=_get_api_key(),
@@ -2578,7 +2607,7 @@ class JarvisLive:
                 config = self._build_config()
 
                 async with (
-                    client.aio.live.connect(model=LIVE_MODEL, config=config) as session,
+                    client.aio.live.connect(model=self._live_model(), config=config) as session,
                     asyncio.TaskGroup() as tg,
                 ):
                     self.session          = session
@@ -2608,6 +2637,7 @@ class JarvisLive:
             except Exception as e:
                 print(f"[JARVIS] Error: {e}")
                 traceback.print_exc()
+                self._note_live_error(e)
                 # Si falla nada más conectar con un código de reanudación, puede estar caducado
                 if self._resume_handle and time.monotonic() - started < 5:
                     print("[ZAR] El código de reanudación no vale; empiezo conversación nueva")

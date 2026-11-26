@@ -405,14 +405,17 @@
 
   // ───────── state polling ─────────
   let lastLogKey = "";
+  let failStreak = 0;
   async function poll() {
     try {
       const r = await fetch(BASE + "/state", { cache: "no-store" });
       const d = await r.json();
-      live = d;
+      live = d; failStreak = 0;
       if (d.lang && d.lang !== lang && T[d.lang]) { lang = d.lang; applyI18n(); }
       owner = d.owner || "";
-    } catch { live = { state: "OFFLINE", level_out: 0, level_in: 0, log: [] }; }
+    } catch {
+      if (++failStreak > 20) live = { state: "OFFLINE", level_out: 0, level_in: 0, log: [] };
+    }
     document.body.classList.toggle("offline", live.state === "OFFLINE");
     $("state").textContent = live.state;
     $("hint").textContent = t(live.state);
@@ -507,8 +510,11 @@
   // ───────── actions ─────────
   async function post(path, timeout = 15000, body) {
     if (DEMO) return { ok: true };
-    if (live.state === "OFFLINE") { toast(t("offlineMsg")); return { ok: false }; }
-    try { return await api(path, { method: "POST", timeout, body }); } catch { return { ok: false }; }
+    for (let i = 0; i < 3; i++) {
+      try { return await api(path, { method: "POST", timeout, body }); }
+      catch { await new Promise(r => setTimeout(r, 1500)); }
+    }
+    toast(t("offlineMsg")); return { ok: false };
   }
   const openWin = page => post(`/window?page=${page}`).then(r => r && r.ok && toast(t("opened") + "…"));
   document.querySelectorAll("[data-win]").forEach(b => b.onclick = () => openWin(b.dataset.win));
