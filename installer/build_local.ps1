@@ -72,6 +72,11 @@ if ("$img".Trim()) { if ("$img".Trim().StartsWith('hf_')) { $k.huggingface_token
 [IO.File]::WriteAllText((Join-Path $pk 'config\zar.json'), (@{ name = $student; lang = 'es' } | ConvertTo-Json), $utf8)
 $bat = "@echo off`r`nstart `"`" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0zar\installer\install_direct.ps1`" -Pkg `"%~dp0zar`"`r`n"
 [IO.File]::WriteAllText((Join-Path $out 'Instalar ZAR.bat'), $bat, [Text.Encoding]::ASCII)
+$readme = "ZAR - como instalar`r`n`r`n1. Si viene en un ZIP: clic derecho en el ZIP > Propiedades > marca Desbloquear > Aceptar.`r`n" +
+          "   Despues: clic derecho > Extraer todo > Extraer.`r`n2. Doble clic en «Instalar ZAR».`r`n" +
+          "3. Escribe tu nombre y espera a que termine la ventanita (5-15 minutos, con internet).`r`n" +
+          "4. Cuando Windows pida el microfono, pulsa Si. Despues di «ZAR».`r`n"
+[IO.File]::WriteAllText((Join-Path $out 'LEEME - como instalar.txt'), $readme, $utf8)
 $zip = Join-Path $dist "$name.zip"
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip -CompressionLevel Optimal

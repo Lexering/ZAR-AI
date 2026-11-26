@@ -53,12 +53,52 @@ $bar.Location = '22,100'; $bar.Size = '460,18'; $bar.Minimum = 0; $bar.Maximum =
 $form.Controls.AddRange(@($title, $label, $bar))
 $form.Show(); $form.Activate()
 function Status($t, $p) { $label.Text = $t; $bar.Value = [Math]::Min(100, $p); [System.Windows.Forms.Application]::DoEvents() }
-function Wait-Proc($p) { $null = $p.Handle; while (-not $p.HasExited) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 150 } ; return $p.ExitCode }
+function Wait-Proc($p, [int]$maxSec = 0) {
+    $null = $p.Handle; $sw = [Diagnostics.Stopwatch]::StartNew()
+    while (-not $p.HasExited) {
+        [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 150
+        if ($maxSec -gt 0 -and $sw.Elapsed.TotalSeconds -gt $maxSec) { try { $p.Kill() } catch {}; Log "timeout after $maxSec s"; return -1 }
+    }
+    return $p.ExitCode
+}
+# Download in small pieces so the window keeps responding, shows the % and gives up if the connection stalls.
+function Get-File($url, $dest, $text, $pct) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    for ($try = 1; $try -le 3; $try++) {
+        $part = "$dest.part"
+        try {
+            $req = [Net.HttpWebRequest]::Create($url)
+            $req.UserAgent = 'ZAR-installer'; $req.Timeout = 30000; $req.ReadWriteTimeout = 30000; $req.AllowAutoRedirect = $true
+            $res = $req.GetResponse(); $total = $res.ContentLength
+            $in = $res.GetResponseStream(); $out = [IO.File]::Create($part)
+            $buf = New-Object byte[] 262144; $done = 0; $last = 0
+            try {
+                while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) {
+                    $out.Write($buf, 0, $n); $done += $n
+                    if ($done - $last -gt 1MB) {
+                        $last = $done
+                        $mb = [Math]::Round($done / 1MB)
+                        Status ($(if ($total -gt 0) { "$text $([Math]::Round(100 * $done / $total)) %" } else { "$text $mb MB" })) $pct
+                    }
+                }
+            } finally { $out.Close(); $in.Close(); $res.Close() }
+            if ($total -gt 0 -and $done -lt $total) { throw "incomplete ($done of $total)" }
+            Move-Item -LiteralPath $part -Destination $dest -Force
+            Log "downloaded $url ($done bytes)"
+            return $true
+        } catch {
+            Log "download $url try $try failed: $_"
+            Remove-Item -LiteralPath $part -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+        }
+    }
+    return $false
+}
 function Step($name, $text, $pct) {
     Status $text $pct
     $p = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
         '-File', "`"$Post`"", '-Step', $name, '-App', "`"$App`"", '-Tmp', "`"$Deps`"")
-    $rc = Wait-Proc $p
+    $rc = Wait-Proc $p 2700
     Log "step $name -> $rc"
     return $rc
 }
@@ -80,36 +120,15 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $App 'lively') -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
     }
 
-    # 2. downloads when installing straight from the GitHub ZIP (no installer\deps folder)
+    # 2. Python, when installing straight from the GitHub ZIP (no installer\deps folder)
     if (-not (Get-ChildItem -LiteralPath $Deps -Filter 'python-*-amd64.exe' -ErrorAction SilentlyContinue)) {
         $Deps = Join-Path $env:TEMP 'zar-deps'
         New-Item -ItemType Directory -Force -Path $Deps | Out-Null
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $pyf = Join-Path $Deps 'python-3.12.8-amd64.exe'
-        if (-not (Test-Path -LiteralPath $pyf)) {
-            Status (L 'Descargando el motor de ZAR...' "Downloading ZAR's engine...") 4
-            $wc = New-Object Net.WebClient
-            $t = $wc.DownloadFileTaskAsync('https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe', $pyf)
-            while (-not $t.IsCompleted) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
-            if ($t.IsFaulted) { throw (L 'No se pudo descargar el motor. Revisa internet y vuelve a abrir «Instalar ZAR».' "Couldn't download the engine. Check the internet and open «Instalar ZAR» again.") }
-        }
-        if (-not (Test-Path -LiteralPath (Join-Path $App 'lively\Livelycu.exe'))) {
-            try {
-                Status (L 'Descargando el fondo animado...' 'Downloading the animated wallpaper...') 5
-                $rel = Invoke-RestMethod 'https://api.github.com/repos/rocksdanister/lively/releases/latest' -UseBasicParsing
-                $asset = $rel.assets | Where-Object { $_.name -like 'lively_setup_x86_full_*.exe' } | Select-Object -First 1
-                if ($asset) {    # big file: download in the background so the window keeps responding
-                    $t2 = (New-Object Net.WebClient).DownloadFileTaskAsync($asset.browser_download_url, (Join-Path $Deps 'lively_setup.exe'))
-                    while (-not $t2.IsCompleted) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
-                }
-                $cu = $rel.assets | Where-Object { $_.name -eq 'lively_command_utility.zip' } | Select-Object -First 1
-                if ($cu) {
-                    $z = Join-Path $Deps 'cu.zip'
-                    Invoke-WebRequest $cu.browser_download_url -OutFile $z -UseBasicParsing
-                    Expand-Archive $z -DestinationPath (Join-Path $App 'lively') -Force
-                    Get-ChildItem -LiteralPath (Join-Path $App 'lively') -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
-                }
-            } catch { Log "lively download: $_" }
+        if (-not (Test-Path -LiteralPath $pyf) -and -not (Test-Path -LiteralPath (Join-Path $App 'python\python.exe'))) {
+            if (-not (Get-File 'https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe' $pyf (L 'Descargando el motor de ZAR...' "Downloading ZAR's engine...") 4)) {
+                throw (L 'No se pudo descargar el motor. Revisa internet y vuelve a abrir «Instalar ZAR».' "Couldn't download the engine. Check the internet and open «Instalar ZAR» again.")
+            }
         }
     }
 
@@ -122,29 +141,47 @@ try {
     }
     Step 'browser' (L 'Instalando el navegador automático...' 'Installing the automatic browser...') 70 | Out-Null
 
-    # 4. animated wallpaper (Lively): its own setup, or the Microsoft Store version if Windows blocks the setup
-    Status (L 'Instalando el fondo animado...' 'Installing the animated wallpaper...') 78
+    # 4. animated wallpaper (Lively): with winget (Windows' own installer), the Microsoft Store as a fallback
+    Status (L 'Instalando el fondo animado...' 'Installing the animated wallpaper...') 76
     $haveLively = @("$env:ProgramFiles\Lively Wallpaper\Lively.exe", "${env:ProgramFiles(x86)}\Lively Wallpaper\Lively.exe",
                     "$env:LOCALAPPDATA\Programs\Lively Wallpaper\Lively.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
-    if (-not $haveLively -and -not (Get-AppxPackage -Name '*Lively*' -ErrorAction SilentlyContinue)) {
-        $ok = $false
+    function Has-Lively { ($haveLively) -or (Get-AppxPackage -Name '*Lively*' -ErrorAction SilentlyContinue) -or
+        (@("$env:ProgramFiles\Lively Wallpaper\Lively.exe", "$env:LOCALAPPDATA\Programs\Lively Wallpaper\Lively.exe") | Where-Object { Test-Path -LiteralPath $_ }) }
+    if (-not (Has-Lively)) {
         $ls = Join-Path $Deps 'lively_setup.exe'
-        if (Test-Path -LiteralPath $ls) {
-            try { Unblock-File -LiteralPath $ls; $ok = (Wait-Proc (Start-Process $ls -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/NOAUTOLAUNCH')) -eq 0 }
+        if (Test-Path -LiteralPath $ls) {      # package made by Crear_instalador.bat
+            try { Unblock-File -LiteralPath $ls; Wait-Proc (Start-Process $ls -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/NOAUTOLAUNCH') 600 | Out-Null }
             catch { Log "lively setup blocked: $_" }
         }
-        if (-not $ok -and (Get-Command winget -ErrorAction SilentlyContinue)) {
-            Log "Lively from the Microsoft Store"
-            Wait-Proc (Start-Process winget -WindowStyle Hidden -PassThru -ArgumentList 'install', '--id', '9NTM2QC6QWS7', '--source', 'msstore',
-                '--accept-package-agreements', '--accept-source-agreements', '--silent') | Out-Null
+        if (-not (Has-Lively) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+            foreach ($src in @(@('--id', 'rocksdanister.LivelyWallpaper', '--source', 'winget'), @('--id', '9NTM2QC6QWS7', '--source', 'msstore'))) {
+                Status (L 'Instalando el fondo animado (puede tardar unos minutos)...' 'Installing the animated wallpaper (this can take a few minutes)...') 78
+                $rc = Wait-Proc (Start-Process winget -WindowStyle Hidden -PassThru -ArgumentList (@('install', '-e') + $src +
+                      @('--accept-package-agreements', '--accept-source-agreements', '--silent', '--disable-interactivity'))) 900
+                Log "winget lively $($src[1]) -> $rc"
+                if (Has-Lively) { break }
+            }
         }
     }
+    # Lively's command tool (sets ZAR as the wallpaper): small download
+    if ((Has-Lively) -and -not (Test-Path -LiteralPath (Join-Path $App 'lively\Livelycu.exe'))) {
+        try {
+            $rel = Invoke-RestMethod 'https://api.github.com/repos/rocksdanister/lively/releases/latest' -UseBasicParsing -TimeoutSec 20
+            $cu = $rel.assets | Where-Object { $_.name -eq 'lively_command_utility.zip' } | Select-Object -First 1
+            $z = Join-Path $Deps 'cu.zip'
+            if ($cu -and (Get-File $cu.browser_download_url $z (L 'Preparando el fondo animado...' 'Preparing the animated wallpaper...') 80)) {
+                Expand-Archive $z -DestinationPath (Join-Path $App 'lively') -Force
+                Get-ChildItem -LiteralPath (Join-Path $App 'lively') -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
+            }
+        } catch { Log "lively tool: $_" }
+    }
+    if (-not (Has-Lively)) { Log "no Lively: ZAR works, without the animated wallpaper" }
     Step 'libreoffice' (L 'Instalando LibreOffice (documentos y PDF)...' 'Installing LibreOffice (documents and PDF)...') 84 | Out-Null
 
     # 5. start with Windows, start now, wallpaper, shortcuts
     Step 'autostart' (L 'Arrancando ZAR...' 'Starting ZAR...') 90 | Out-Null
     Step 'start' (L 'Arrancando ZAR...' 'Starting ZAR...') 92 | Out-Null
-    Step 'wallpaper' (L 'Poniendo el fondo de pantalla...' 'Setting the wallpaper...') 96 | Out-Null
+    if (Has-Lively) { Step 'wallpaper' (L 'Poniendo el fondo de pantalla...' 'Setting the wallpaper...') 96 | Out-Null }
     $sh = New-Object -ComObject WScript.Shell
     $pyw = Join-Path $App 'python\pythonw.exe'
     foreach ($dir in @([Environment]::GetFolderPath('Desktop'), (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'))) {

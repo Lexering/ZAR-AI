@@ -5,29 +5,23 @@ documents & PDF, tasks, web, images and PC control, with an animated desktop (Li
 
 > Keep this repository **private**. Keys are never stored in the repo.
 
-## Make an installer for a student — on your own PC (free)
-1. Download this repo (Code → Download ZIP) and extract it.
-2. Double-click **Crear_instalador.bat**. It installs Inno Setup the first time, downloads Python and Lively,
-   asks for the student's name and keys, and leaves `dist\ZAR-Setup-<name>.exe`.
+## Windows only
 
-## Make an installer with GitHub Actions (needs Actions billing for private repos)
-1. GitHub → **Actions** → **Build ZAR installer** → **Run workflow**.
-2. Fill in: student name, their Gemini API key, and (optional) an image key
-   (a Gemini key with billing, or a Hugging Face token `hf_...`).
-3. When it finishes (~5 min): **Releases** → download `ZAR-Setup-<name>.exe` and send it.
+Windows 11 "Smart App Control" blocks unsigned .exe files and scripts downloaded from the internet, so ZAR
+installs with a script and the ZIP must be **unblocked before extracting** (Properties → Unblock).
 
-The student double-clicks it: it installs its own Python, the AI components, Lively Wallpaper,
-LibreOffice, sets the animated wallpaper and starts ZAR hidden every time Windows starts. No cmd.
+### Install on this PC (straight from GitHub)
+1. Code → Download ZIP.
+2. Right-click the ZIP → **Properties** → tick **Unblock** → OK. Then right-click → **Extract all**.
+3. Double-click **Instalar ZAR** → name → Gemini key. A small progress window does the rest (5-15 min).
 
-The keys are inside that .exe: send each one only to its student.
+### Make a package for a student (their key inside)
+1. Double-click **Crear_instalador.bat** → student's name and keys → `dist\ZAR-<name>.zip`.
+2. The student: unblock the ZIP (Properties → Unblock), extract it, double-click **Instalar ZAR**.
+
+It installs its own Python, the AI components, Lively Wallpaper (winget / Microsoft Store), LibreOffice,
+sets the animated wallpaper and starts ZAR hidden every time Windows starts.
+The key is inside that ZIP: send each one only to its student.
 
 ## Updates
 `python tools/make_update.py` → `updates/ZAR_Update_vN.cmd` (double-click on the student's PC).
-
-## macOS
-1. On the Mac: Code → Download ZIP (logged in to GitHub), it unzips by itself in Downloads.
-2. Right-click **Instalar en Mac.command** → **Open** → **Open** (only the first time, macOS asks).
-3. Answer the small windows (name, language, keys). It installs its own Python + AI components,
-   starts at every login in the background (LaunchAgent) with its own animated desktop (mac_wallpaper.py).
-   Allow the microphone when macOS asks.
-Windows-only extras (global hotkeys, some PC-control tools) are not available on Mac.
