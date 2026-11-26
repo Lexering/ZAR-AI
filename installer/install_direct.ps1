@@ -67,7 +67,7 @@ try {
     Status (L 'Copiando ZAR...' 'Copying ZAR...') 2
     Step 'stop' '' 2 | Out-Null
     $rc = Wait-Proc (Start-Process robocopy.exe -WindowStyle Hidden -PassThru -ArgumentList @("`"$Pkg`"", "`"$AppDir`"", '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/R:1', '/W:1',
-        '/XD', "`"$Deps`"", "`"$(Join-Path $Pkg 'memory')`"", '/XF', 'api_keys.json', 'zar.json'))
+        '/XD', "`"$Deps`"", "`"$(Join-Path $Pkg 'memory')`"", '/XF', 'api_keys.json', 'zar.json', 'API', 'API.txt', 'hud_token.txt'))
     if ($rc -ge 8) { throw "robocopy $rc" }
     Get-ChildItem -LiteralPath $AppDir -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path (Join-Path $AppDir 'config'), (Join-Path $AppDir 'memory'), (Join-Path $AppDir 'logs') | Out-Null
@@ -79,7 +79,37 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $App 'lively') -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
     }
 
-    # 2. engine + AI components
+    # 2. downloads when installing straight from the GitHub ZIP (no installer\deps folder)
+    if (-not (Get-ChildItem -LiteralPath $Deps -Filter 'python-*-amd64.exe' -ErrorAction SilentlyContinue)) {
+        $Deps = Join-Path $env:TEMP 'zar-deps'
+        New-Item -ItemType Directory -Force -Path $Deps | Out-Null
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $pyf = Join-Path $Deps 'python-3.12.8-amd64.exe'
+        if (-not (Test-Path -LiteralPath $pyf)) {
+            Status (L 'Descargando el motor de ZAR...' "Downloading ZAR's engine...") 4
+            $wc = New-Object Net.WebClient
+            $t = $wc.DownloadFileTaskAsync('https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe', $pyf)
+            while (-not $t.IsCompleted) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
+            if ($t.IsFaulted) { throw (L 'No se pudo descargar el motor. Revisa internet y vuelve a abrir «Instalar ZAR».' "Couldn't download the engine. Check the internet and open «Instalar ZAR» again.") }
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $App 'lively\Livelycu.exe'))) {
+            try {
+                Status (L 'Descargando el fondo animado...' 'Downloading the animated wallpaper...') 5
+                $rel = Invoke-RestMethod 'https://api.github.com/repos/rocksdanister/lively/releases/latest' -UseBasicParsing
+                $asset = $rel.assets | Where-Object { $_.name -like 'lively_setup_x86_full_*.exe' } | Select-Object -First 1
+                if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile (Join-Path $Deps 'lively_setup.exe') -UseBasicParsing }
+                $cu = $rel.assets | Where-Object { $_.name -eq 'lively_command_utility.zip' } | Select-Object -First 1
+                if ($cu) {
+                    $z = Join-Path $Deps 'cu.zip'
+                    Invoke-WebRequest $cu.browser_download_url -OutFile $z -UseBasicParsing
+                    Expand-Archive $z -DestinationPath (Join-Path $App 'lively') -Force
+                    Get-ChildItem -LiteralPath (Join-Path $App 'lively') -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
+                }
+            } catch { Log "lively download: $_" }
+        }
+    }
+
+    # 3. engine + AI components
     if ((Step 'python' (L 'Instalando el motor de ZAR...' "Installing ZAR's engine...") 6) -ne 0) {
         throw (L 'No se pudo instalar el motor (Python). Revisa internet y vuelve a abrir «Instalar ZAR».' "Python could not be installed. Check the internet and open «Instalar ZAR» again.")
     }
@@ -88,7 +118,7 @@ try {
     }
     Step 'browser' (L 'Instalando el navegador automático...' 'Installing the automatic browser...') 70 | Out-Null
 
-    # 3. animated wallpaper (Lively): its own setup, or the Microsoft Store version if Windows blocks the setup
+    # 4. animated wallpaper (Lively): its own setup, or the Microsoft Store version if Windows blocks the setup
     Status (L 'Instalando el fondo animado...' 'Installing the animated wallpaper...') 78
     $haveLively = @("$env:ProgramFiles\Lively Wallpaper\Lively.exe", "${env:ProgramFiles(x86)}\Lively Wallpaper\Lively.exe",
                     "$env:LOCALAPPDATA\Programs\Lively Wallpaper\Lively.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
@@ -107,7 +137,7 @@ try {
     }
     Step 'libreoffice' (L 'Instalando LibreOffice (documentos y PDF)...' 'Installing LibreOffice (documents and PDF)...') 84 | Out-Null
 
-    # 4. start with Windows, start now, wallpaper, shortcuts
+    # 5. start with Windows, start now, wallpaper, shortcuts
     Step 'autostart' (L 'Arrancando ZAR...' 'Starting ZAR...') 90 | Out-Null
     Step 'start' (L 'Arrancando ZAR...' 'Starting ZAR...') 92 | Out-Null
     Step 'wallpaper' (L 'Poniendo el fondo de pantalla...' 'Setting the wallpaper...') 96 | Out-Null
