@@ -2247,6 +2247,29 @@ class JarvisLive:
                 media={"data": data, "mime_type": "audio/pcm"}
             )
 
+    async def _session_watchdog(self):
+        """Reconnect cleanly when Google announced it will close the session (GoAway) or the websocket died."""
+        self._goaway_at = None
+        while True:
+            await asyncio.sleep(2)
+            ga = getattr(self, "_goaway_at", None)
+            if ga and time.monotonic() >= ga:
+                self._goaway_at = None
+                raise ConnectionResetError("Renovando la conexión con Gemini (GoAway)")
+            ws = getattr(self.session, "_ws", None)
+            st = getattr(ws, "state", None)
+            if st is not None and getattr(st, "name", str(st)).upper() in ("CLOSED", "CLOSING"):
+                raise ConnectionResetError("El websocket de Gemini está cerrado")
+            if getattr(ws, "closed", False) is True:
+                raise ConnectionResetError("El websocket de Gemini está cerrado")
+
+    async def _loop_beat(self):
+        while True:
+            cs = getattr(self, "_connecting_since", None)
+            if cs is None or time.monotonic() - cs < 120:
+                _JARVIS_LOOP_BEAT.t = time.monotonic()
+            await asyncio.sleep(5)
+
     async def _keepalive(self):
         """Gemini closes the session after ~a minute without audio (wake-word standby, muted mic).
         Send a tiny bit of silence now and then so the connection stays open."""
@@ -2434,7 +2457,10 @@ class JarvisLive:
 
         try:
             while True:
+                got = 0
                 async for response in session.receive():
+                    got += 1
+                    self._last_recv = time.monotonic()
 
                     if response.data:
                         if self._turn_done_event and self._turn_done_event.is_set():
@@ -2455,6 +2481,18 @@ class JarvisLive:
                     ga = getattr(response, "go_away", None)
                     if ga:
                         print(f"[ZAR] Gemini renovará la conexión en {ga.time_left}; se reanudará sin perder el hilo")
+                        secs = 30.0
+                        try:
+                            tl = ga.time_left
+                            if hasattr(tl, "total_seconds"):
+                                secs = float(tl.total_seconds())
+                            else:
+                                mm = re.search(r"[\d.]+", str(tl))
+                                if mm:
+                                    secs = float(mm.group())
+                        except Exception:
+                            pass
+                        self._goaway_at = time.monotonic() + max(1.0, min(secs, 120.0) - 8.0)
 
                     if response.server_content:
                         sc = response.server_content
@@ -2510,6 +2548,9 @@ class JarvisLive:
                         )
                         tool_tasks.add(task)
                         task.add_done_callback(tool_tasks.discard)
+                if not got:
+                    raise ConnectionError("La conexión con Gemini se ha cerrado")
+                await asyncio.sleep(0)
         except Exception as e:
             print(f"[JARVIS] Recv error: {e}")
             traceback.print_exc()
@@ -2575,7 +2616,8 @@ class JarvisLive:
         return LIVE_MODEL
 
     def _note_live_error(self, e):
-        txt = str(e).lower()
+        subs = getattr(e, "exceptions", None)
+        txt = (" ".join(str(x) for x in subs) if subs else str(e)).lower()
         st = getattr(self, "_live_fb", None)
         if st and time.monotonic() < st["until"] and any(k in txt for k in ("not found", "404", "not supported", "unsupported", "invalid model")):
             print(f"[ZAR] {st['model']} no está disponible: vuelvo al modelo principal")
@@ -2599,12 +2641,14 @@ class JarvisLive:
             api_key=_get_api_key(),
             http_options={"api_version": "v1beta"}
         )
+        self._beat_task = asyncio.create_task(self._loop_beat())
         while True:
             started = time.monotonic()
             try:
                 print("[JARVIS] Connecting..." + (" (reanudando conversación)" if self._resume_handle else ""))
                 self.ui.set_state("THINKING")
                 config = self._build_config()
+                self._connecting_since = time.monotonic()
 
                 async with (
                     client.aio.live.connect(model=self._live_model(), config=config) as session,
@@ -2616,6 +2660,7 @@ class JarvisLive:
                     self.out_queue        = asyncio.Queue(maxsize=200)
                     self._turn_done_event = asyncio.Event()
 
+                    self._connecting_since = None
                     print("[JARVIS] Connected.")
                     self.ui.set_state("LISTENING")
                     if not self._greeted:
@@ -2633,10 +2678,19 @@ class JarvisLive:
                     tg.create_task(self._receive_audio())
                     tg.create_task(self._play_audio())
                     tg.create_task(self._keepalive())
+                    tg.create_task(self._session_watchdog())
 
-            except Exception as e:
-                print(f"[JARVIS] Error: {e}")
-                traceback.print_exc()
+            except BaseException as e:
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
+                if isinstance(e, asyncio.CancelledError) and asyncio.current_task().cancelling():
+                    raise
+                print(f"[JARVIS] Error: {e!r}")
+                subs = getattr(e, "exceptions", None)
+                if subs:
+                    print("[JARVIS] Motivo: " + " | ".join(repr(x) for x in subs))
+                if "GoAway" not in repr(e) + repr(subs):
+                    traceback.print_exc()
                 self._note_live_error(e)
                 # Si falla nada más conectar con un código de reanudación, puede estar caducado
                 if self._resume_handle and time.monotonic() - started < 5:
@@ -2892,6 +2946,13 @@ def _setup_window_and_tray(ui):
         win.hide()
 
 
+class _LoopBeat:
+    t = None
+
+
+_JARVIS_LOOP_BEAT = _LoopBeat()
+
+
 def _start_heartbeat(ui):
     """Latido cada 30 s desde la interfaz: si se congela, el guardián lo nota y reinicia ZAR."""
     try:
@@ -2900,6 +2961,10 @@ def _start_heartbeat(ui):
         hb.parent.mkdir(exist_ok=True)
 
         def beat():
+            lb = getattr(_JARVIS_LOOP_BEAT, "t", None)
+            if lb is not None and time.monotonic() - lb > 150:
+                print(f"[ZAR] El motor de voz no responde desde hace {int(time.monotonic() - lb)} s")
+                return
             try:
                 hb.write_text(str(time.time()), encoding="utf-8")
             except Exception:
