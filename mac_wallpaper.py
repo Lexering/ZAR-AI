@@ -57,6 +57,15 @@ def server_up() -> bool:
         return False
 
 
+class DesktopWindow(NSWindow):
+    # borderless windows can't take the keyboard by default; the desktop has forms (agenda, caja, stock)
+    def canBecomeKeyWindow(self):
+        return True
+
+    def canBecomeMainWindow(self):
+        return True
+
+
 class Wallpaper(NSObject):
     def init(self):
         self = objc.super(Wallpaper, self).init()
@@ -72,7 +81,7 @@ class Wallpaper(NSObject):
                      | NSWindowCollectionBehaviorIgnoresCycle)
         for screen in NSScreen.screens():
             frame = screen.frame()
-            win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            win = DesktopWindow.alloc().initWithContentRect_styleMask_backing_defer_(
                 frame, BORDERLESS, NSBackingStoreBuffered, False)
             win.setLevel_(level)
             win.setCollectionBehavior_(behaviour)
