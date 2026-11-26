@@ -80,12 +80,13 @@ switch ($Step) {
         # stop an older copy, then start ZAR hidden through its guardian
         $al = $App.ToLower()
         Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -like 'python*' -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($al) } |
+            Where-Object { $_.Name -like 'python*' -and (($_.CommandLine -and $_.CommandLine.ToLower().Contains($al)) -or
+                           ($_.ExecutablePath -and $_.ExecutablePath.ToLower().StartsWith($al))) } |
             ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force } catch {} }
         Start-Process -FilePath $Pyw -ArgumentList "`"$(Join-Path $AppDir 'zar_guardian.pyw')`"" -WorkingDirectory $AppDir
         # wait until ZAR's desktop server answers (it puts the token into the wallpaper)
         for ($i = 0; $i -lt 90; $i++) {
-            try { Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5055/state' -TimeoutSec 2 | Out-Null; Log "ZAR is up"; break }
+            try { Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5065/state' -TimeoutSec 2 | Out-Null; Log "ZAR is up"; break }
             catch { Start-Sleep -Seconds 2 }
         }
     }

@@ -42,7 +42,7 @@
 <div class="foot"><span id="count"></span><button class="link" id="clear" type="button">Quitar las hechas</button></div>
 <script>
 (() => {
-  const BASE = "http://127.0.0.1:5055", AUTH = { "X-ZAR-Token": "__HUD_TOKEN__" };
+  const BASE = "http://127.0.0.1:5065", AUTH = { "X-ZAR-Token": "__HUD_TOKEN__" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   let EN = false;
@@ -51,7 +51,8 @@
     try {
       const r = await (await fetch(BASE + "/notes", { method: body ? "POST" : "GET", headers: { ...AUTH, "Content-Type": "application/json" },
                                                      body: body ? JSON.stringify(body) : undefined, cache: "no-store" })).json();
-      if (r.ok || r.items) render(r.items || []);
+      if (r.items) render(r.items);
+      if (!r.ok) $("count").textContent = L("No se pudo guardar. Reinicia ZAR.", "Couldn't save. Restart ZAR.");
     } catch { $("list").innerHTML = `<div class="empty">${L("ZAR no responde", "ZAR isn't responding")}</div>`; }
   }
   function render(items) {

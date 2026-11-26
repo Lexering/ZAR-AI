@@ -6,7 +6,7 @@
 <title>ZAR HUD</title>
 <!--
   ZAR - animated desktop for Lively Wallpaper.
-  Talks to ZAR at http://127.0.0.1:5055 (state, weather, tasks, news, Pomodoro events).
+  Talks to ZAR at http://127.0.0.1:5065 (state, weather, tasks, news, Pomodoro events).
   Lively: Settings -> Wallpaper -> Wallpaper input: Mouse (so the buttons can be clicked).
 -->
 <style>
@@ -280,7 +280,7 @@
 
 <script>
 (() => {
-  const BASE = "http://127.0.0.1:5055";
+  const BASE = "http://127.0.0.1:5065";
   const TOKEN = "__HUD_TOKEN__";                 // filled in automatically on each PC
   const AUTH = { "X-ZAR-Token": TOKEN };
   const DEMO = location.search.includes("demo");

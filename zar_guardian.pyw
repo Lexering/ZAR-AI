@@ -46,7 +46,7 @@ def single_instance() -> bool:
         return True
     import ctypes
     global _mutex
-    _mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\ALBERTO_guardian")
+    _mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\ZAR_guardian")
     return ctypes.windll.kernel32.GetLastError() != 183
 
 

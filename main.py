@@ -59,7 +59,7 @@ except Exception:
 if os.name == "nt":
     try:
         import ctypes as _ct
-        _MUTEX = _ct.windll.kernel32.CreateMutexW(None, False, "Local\\ALBERTO_Mark_XXXIX")
+        _MUTEX = _ct.windll.kernel32.CreateMutexW(None, False, "Local\\ZAR_main")
         if _ct.windll.kernel32.GetLastError() == 183:          # ERROR_ALREADY_EXISTS
             print("[ZAR] Ya hay un ZAR en marcha; cierro esta copia.")
             os._exit(0)
@@ -1385,7 +1385,7 @@ class JarvisLive:
 
     def __init__(self, ui: JarvisUI):
         self.ui             = ui
-        # Fondo de escritorio animado: publica estado, voz y mensajes en 127.0.0.1:5055
+        # Fondo de escritorio animado: publica estado, voz y mensajes en 127.0.0.1:5065
         try:
             from actions import hud_bridge
             hud_bridge.attach_ui(ui)

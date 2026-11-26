@@ -1,7 +1,7 @@
 """
 hud_bridge.py — Publishes ZAR's state for the animated desktop wallpaper and serves its controls.
 
-Local server on http://127.0.0.1:5055 (only reachable from this PC).
+Local server on http://127.0.0.1:5065 (only reachable from this PC).
 
 Open (no token, as before):
   GET  /state           state, voice levels, conversation log, system info
@@ -35,7 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
-PORT = 5055
+PORT = 5065          # ZAR has its own port (Alberto uses 5055), so both can run on the same PC
 BASE_DIR = Path(__file__).resolve().parent.parent          # ZAR folder (where main.py is)
 CONFIG_DIR = BASE_DIR / "config"
 WALLPAPER_DIR = BASE_DIR / "wallpaper"

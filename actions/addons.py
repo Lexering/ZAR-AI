@@ -9,7 +9,7 @@ main.py only needs two small hooks (added by tools/addon_patch.py):
   TOOL_DECLARATIONS += addons.DECLARATIONS         -> Gemini knows the new tools
   if name in addons.HANDLERS: ...                  -> they get executed
 
-The map and the boards are served by a tiny local web server (127.0.0.1:5058) unless the
+The map and the boards are served by a tiny local web server (127.0.0.1:5068) unless the
 newer HUD (hud_bridge with windows) is present, in which case that one is used.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PAGES = BASE_DIR / "wallpaper"
-PORT = 5058
+PORT = 5068
 TOKEN_FILE = BASE_DIR / "config" / "addons_token.txt"
 
 DECLARATIONS: list[dict] = []
