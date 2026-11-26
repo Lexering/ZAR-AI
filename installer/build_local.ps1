@@ -57,7 +57,7 @@ $pk = Join-Path $out 'zar'
 if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $pk | Out-Null
 & robocopy.exe $Root $pk /E /NFL /NDL /NJH /NJS /R:1 /W:1 /XD (Join-Path $Root '.git') (Join-Path $Root '.github') $dist $Deps (Join-Path $Root 'logs') `
-    (Join-Path $Root 'memory\backups') __pycache__ /XF *.pyc api_keys.json zar.json hud_token.txt telegram.json my_voice.pkl | Out-Null
+    (Join-Path $Root 'memory\backups') __pycache__ /XF *.pyc api_keys.json zar.json hud_token.txt telegram.json my_voice.pkl API API.txt | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $pk 'memory') -Filter *.json -ErrorAction SilentlyContinue | Remove-Item -Force
 $pkDeps = Join-Path $pk 'installer\deps'
 New-Item -ItemType Directory -Force -Path $pkDeps | Out-Null
