@@ -36,6 +36,12 @@ def _base_dir() -> Path:
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
+try:
+    from actions.owner_profile import get_owner_name as _gon
+    _OWNER = _gon() or ""
+    _OWNER = "" if _OWNER == "the user" else _OWNER
+except Exception:
+    _OWNER = ""
 
 _DEFAULT_W, _DEFAULT_H = 1100, 720
 _MIN_W,     _MIN_H     = 900, 600
@@ -811,7 +817,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, face_path: str):
         super().__init__()
-        self.setWindowTitle("ZAR — OUAIL")
+        self.setWindowTitle(f"ZAR — {_OWNER.upper()}")
         self.setMinimumSize(_MIN_W, _MIN_H)
         self.resize(_DEFAULT_W, _DEFAULT_H)
         screen = QApplication.primaryScreen().availableGeometry()
@@ -908,7 +914,7 @@ class MainWindow(QMainWindow):
         main_lay.setSpacing(0)
         top = QHBoxLayout()
         top.setContentsMargins(16, 6, 16, 0)
-        badge = QLabel("◈ OUAIL")
+        badge = QLabel(f"◈ {_OWNER.upper()}")
         badge.setFont(QFont("Courier New", 8))
         badge.setStyleSheet(f"color: {C.PRI_DIM}; background: transparent;")
         top.addWidget(badge)
@@ -1235,7 +1241,7 @@ class MainWindow(QMainWindow):
 
         lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen"))
         lay.addStretch()
-        lay.addWidget(_fl("ZAR  ·  OUAIL  ·  CLASSIFIED"))
+        lay.addWidget(_fl(f"ZAR  ·  {_OWNER.upper()}"))
         lay.addStretch()
         lay.addWidget(_fl("© ZAR AI", C.PRI_DIM))
         return w
@@ -1294,8 +1300,12 @@ class MainWindow(QMainWindow):
     def _check_config(self) -> bool:
         if not API_FILE.exists(): return False
         try:
-            d = json.loads(API_FILE.read_text(encoding="utf-8"))
-            return bool(d.get("gemini_api_key")) and bool(d.get("os_system"))
+            d = json.loads(API_FILE.read_text(encoding="utf-8-sig"))
+            if d.get("gemini_api_key") and not d.get("os_system"):
+                # installers only write the key: fill in the OS ourselves instead of asking
+                d["os_system"] = {"Darwin": "mac", "Windows": "windows"}.get(platform.system(), "linux")
+                API_FILE.write_text(json.dumps(d, indent=4), encoding="utf-8")
+            return bool(d.get("gemini_api_key"))
         except Exception:
             return False
 
@@ -1310,7 +1320,12 @@ class MainWindow(QMainWindow):
 
     def _on_setup_done(self, key: str, os_name: str):
         os.makedirs(CONFIG_DIR, exist_ok=True)
-        API_FILE.write_text(json.dumps({"gemini_api_key": key, "os_system": os_name}, indent=4), encoding="utf-8")
+        try:
+            d = json.loads(API_FILE.read_text(encoding="utf-8-sig")) if API_FILE.exists() else {}
+        except Exception:
+            d = {}
+        d.update({"gemini_api_key": key, "os_system": os_name})      # keep the other keys (images, ...)
+        API_FILE.write_text(json.dumps(d, indent=4), encoding="utf-8")
         self._ready = True
         if self._overlay:
             self._overlay.hide()
