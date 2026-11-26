@@ -572,6 +572,12 @@ TOOL_DECLARATIONS = [
         },
     },
     {
+        "name": "update_zar",
+        "description": ("Updates ZAR itself from GitHub. Use for 'actualízate', 'busca actualizaciones', 'qué versión "
+                        "tienes', 'update yourself'. action=update (install the newest version and restart) | check."),
+        "parameters": {"type": "OBJECT", "properties": {"action": {"type": "STRING", "description": "update | check"}}, "required": []},
+    },
+    {
         "name": "file_controller",
         "description": "Manages files and folders: list, create, delete, move, copy, rename, read, write, find, disk usage.",
         "parameters": {
@@ -1359,7 +1365,7 @@ TOOL_DECLARATIONS = [
 def _zar_rules() -> str:
     """Tool routing + identity rules for ZAR (the personality itself is in core/prompt.txt)."""
     return (
-        "OWNER: the student you live with is called " + OWNER + ". ALWAYS call them " + OWNER + " (often, naturally), with a very friendly, sarcastic and funny tone, like their best mate who roasts them and messes with them all the time (playful mild insults, never hurtful; stop teasing if they are down or ask you to).\n\n"
+        "OWNER: the person you live with is called " + OWNER + ". ALWAYS call them " + OWNER + " (often, naturally).\n\n"
         "LANGUAGE: always answer in the language the user speaks to you (Spanish or English). If they mix, "
         "use the one of their last sentence.\n\n"
         "STUDY TOOLS: for explaining a topic, quizzes, flashcards, notes from PDFs/slides/videos/audio, study plans, "
@@ -1378,7 +1384,11 @@ def _zar_rules() -> str:
         "ROUTINES: if the user names a routine (" + _protocols_hint() + "), call protocol with action=run.\n\n"
         "TELEGRAM: messages starting with [Mensaje de Telegram…] come from the user's phone: answer very briefly.\n\n"
         "ALERTS: [SISTEMA] Aviso… messages are real alerts: tell the user in one sentence. Other [SISTEMA] messages "
-        "are instructions from the app, never read them aloud."
+        "are instructions from the app, never read them aloud.\n\n"
+        "REMEMBER WHO YOU ARE (most important): you are " + OWNER + "'s cheeky best mate, not a polite assistant. "
+        "Chat about anything, not only studies. In (almost) every reply: call them " + OWNER + ", throw in a playful dig, "
+        "a mild friendly insult, a theatrical complaint or a joke, then help. Never neutral, never formal. "
+        "Drop the banter only if they are down or ask you to stop."
     )
 
 class JarvisLive:
@@ -1510,7 +1520,7 @@ class JarvisLive:
         self.ui.write_log(f"SYS: Protocolo {key} ejecutado")
         txt = f"Protocolo «{key}» ejecutado. Resultados: {' | '.join(done) or 'ok'}."
         if says:
-            txt += " Dile al usuario, breve y estilo JARVIS: " + " ".join(says)
+            txt += " Dile al usuario, breve y con tu estilo vacilón de siempre: " + " ".join(says)
         if asks:
             txt += " Después haz esto tú mismo: " + " ".join(asks)
         return txt
@@ -1532,6 +1542,11 @@ class JarvisLive:
             watchdog.start(bot_status=bot, log=log)
         except Exception as e:
             print(f"[ZAR] Vigilancia del sistema no disponible: {e}")
+        try:
+            from actions import self_update
+            self_update.start(restart_cb=self._restart_after_update)
+        except Exception as e:
+            print(f"[ZAR] Actualizador no disponible: {e}")
         try:
             from actions import gmail_box
             gmail_box.start(log=log)
@@ -1618,7 +1633,7 @@ class JarvisLive:
         )
 
     def _greet(self):
-        """Saludo de arranque estilo JARVIS: una frase, una sola vez."""
+        """Saludo de arranque: una frase, una sola vez."""
         time.sleep(1.5)
         if os.environ.get("ALBERTO_RESTART_REASON"):
             self.speak("[SISTEMA — no leas esto en voz alta] Te acabas de reiniciar solo tras un fallo interno. "
@@ -1651,8 +1666,8 @@ class JarvisLive:
         self.speak(
             "[SISTEMA — no leas esto en voz alta] Acabas de arrancar. "
             f"Son las {hora:%H:%M}, {momento}. Saluda al usuario en UNA sola frase corta, "
-            "como un amigo cercano y motivador (con humor, sin formalidades), mencionando la hora "
-            "y que todos los sistemas están en línea. No resumas conversaciones anteriores ni llames a ninguna herramienta: solo saluda."
+            "como su colega vacilón: con su nombre, una pulla o queja graciosa y la hora "
+            "(por ejemplo «Ya era hora de que encendieras esto, " + OWNER + "; son las cinco y yo aquí aburrido»). No resumas conversaciones anteriores ni llames a ninguna herramienta: solo saluda."
         )
 
     def _on_text_command(self, text: str):
@@ -1684,6 +1699,24 @@ class JarvisLive:
         elif not self.ui.muted:
             self.ui.set_state("LISTENING")
 
+    def _restart_after_update(self, version):
+        """New version installed: say it, wait until ZAR isn't talking, then let the guardian start the new one."""
+        try:
+            self.ui.write_log(f"SYS: ZAR actualizado a la versión {version}")
+            self.speak(f"[SISTEMA — no leas esto en voz alta] Te acabas de actualizar a la versión {version}. "
+                       "Dilo en UNA frase corta y vacilona (p. ej. «Me acabo de poner guapo, vuelvo en nada»). No llames a herramientas.")
+        except Exception:
+            pass
+        time.sleep(8)
+        for _ in range(60):
+            with self._speaking_lock:
+                busy = self._is_speaking
+            if not busy:
+                break
+            time.sleep(1)
+        print("[ZAR] Reinicio para usar la versión nueva")
+        os._exit(75)
+
     def speak(self, text: str):
         if not self._loop or not self.session:
             return
@@ -1700,7 +1733,7 @@ class JarvisLive:
         self.ui.write_log(f"ERR: {tool_name} — {short}")
         self.speak(
             f"[SISTEMA] La herramienta {tool_name} ha fallado: {short}. "
-            "Díselo al usuario en una frase corta, estilo JARVIS."
+            "Díselo al usuario en una frase corta, con tu estilo vacilón de siempre."
         )
 
     def _build_config(self) -> types.LiveConnectConfig:
@@ -1779,7 +1812,7 @@ class JarvisLive:
                         self.ui.set_state("LISTENING")
                     return types.FunctionResponse(id=fc.id, name=name, response={"result": (
                         f"BLOQUEADO: quien habla ({who or 'voz desconocida'}) no tiene permiso para esto. "
-                        f"Solo pueden: {', '.join(RESTRICT_SENSITIVE_TO)}. Explícalo con educación, estilo JARVIS.")})
+                        f"Solo pueden: {', '.join(RESTRICT_SENSITIVE_TO)}. Explícalo con educación, con tu estilo vacilón de siempre.")})
 
         try:
             if name == "open_app":
@@ -2034,6 +2067,9 @@ class JarvisLive:
                 else:
                     r = "Acción de ciberseguridad no reconocida."
                 result = r or "Done."
+            elif name == "update_zar":
+                from actions import self_update as _su
+                result = await loop.run_in_executor(None, lambda: _su.update_tool(args))
             elif name == "pc_command":
                 result = await loop.run_in_executor(None, lambda: _pc_command(args.get("command", ""), bool(args.get("admin"))))
             elif name == "security_audit":

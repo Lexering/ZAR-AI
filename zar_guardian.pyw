@@ -121,6 +121,11 @@ def main():
         if reason:
             env["ALBERTO_RESTART_REASON"] = reason
         code = run_once(env)
+        if code == 75:           # ZAR updated itself: start the new version right away
+            log("ZAR actualizado: arranco la versión nueva")
+            reason = ""
+            time.sleep(1)
+            continue
         stop = LOGS / "stop.flag"
         if code == 0 and (os.name == "nt" or stop.exists()):
             stop.unlink(missing_ok=True)

@@ -1112,7 +1112,7 @@ def speak_news() -> dict:
 # ───────────────────────── HTTP server ─────────────────────────
 
 PROTECTED = ("/news", "/weather", "/geocode", "/settings", "/open", "/news_speak", "/window",
-             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action", "/desktop", "/notes")
+             "/chat", "/upload", "/action", "/chatlog", "/world_events", "/boards", "/zar_event", "/files", "/files_action", "/desktop", "/notes", "/update")
 MAX_UPLOAD = 100 * 1024 * 1024
 
 
@@ -1191,6 +1191,9 @@ class _Handler(BaseHTTPRequestHandler):
                     s = load_settings()
                     detected = detect_location() if s["location"] is None else None
                     self._send_json({"ok": True, **s, "detected": detected})
+                elif route == "/update":
+                    from actions import self_update
+                    self._send_json({"ok": True, **self_update.status()})
                 elif route == "/notes":
                     from actions import notes
                     self._send_json({"ok": True, "items": notes.all_notes()})
@@ -1323,6 +1326,10 @@ class _Handler(BaseHTTPRequestHandler):
             body = json.loads(self._read_body() or b"{}")
             ok, info = chat(body.get("text", ""), body.get("file", ""))
             self._send_json({"ok": ok, "info": info}, 200 if ok else 400)
+        elif route == "/update":
+            from actions import self_update
+            threading.Thread(target=self_update.update, daemon=True).start()
+            self._send_json({"ok": True, "msg": "Buscando actualización…"})
         elif route == "/notes":
             from actions import notes
             b = json.loads(self._read_body() or b"{}")

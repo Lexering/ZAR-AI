@@ -77,6 +77,10 @@
     <label id="t-break" style="margin-left:10px">Descanso</label><input type="number" id="p-b" min="1" max="60"><label>min</label>
     <button class="btn" id="p-save" type="button" style="margin-left:auto">OK</button></div>
 </section>
+<section><h2 id="t-upd">Actualizaciones</h2>
+  <div class="pomo"><span id="upd-info" style="flex:1;color:var(--text)">…</span><button class="btn" id="upd-btn" type="button">Buscar actualización</button></div>
+  <div class="hint" id="t-updhint">ZAR se actualiza solo cada pocas horas. Con este botón lo hace ahora.</div>
+</section>
 <div class="picker" id="picker"><div class="pbox">
   <div style="display:flex;align-items:center;margin-bottom:10px"><h2 id="pick-title" style="margin:0;flex:1">Elige un icono</h2><button class="ib" id="pick-close" type="button">✕</button></div>
   <div class="pgrid" id="pick-grid"></div>
@@ -99,11 +103,13 @@
   const TX = {
     es: { title: "Personalizar el escritorio", sub: "Los cambios se ven en el fondo al momento.", panels: "Paneles", color: "Color", bg: "Fondo animado (partículas)",
           apps: "Accesos rápidos", hint: "Web (ej. moodle.miuni.es) o la ruta de un programa o carpeta del PC.", focus: "Concentración", brk: "Descanso",
-          add: "Añadir", icon: "Cambiar icono", pickT: "Elige un icono", emojiPh: "o pega un emoji 📚", reset: "Icono original", name: "Nombre", url: "Web o programa", saved: "Guardado", choose: "Elige una app…", need: "Pon nombre y dirección", max: "Máximo 16 accesos",
+          upd: "Actualizaciones", updBtn: "Buscar actualización", updHint: "ZAR se actualiza solo cada pocas horas. Con este botón lo hace ahora.",
+          ver: "Versión", checking: "buscando…", add: "Añadir", icon: "Cambiar icono", pickT: "Elige un icono", emojiPh: "o pega un emoji 📚", reset: "Icono original", name: "Nombre", url: "Web o programa", saved: "Guardado", choose: "Elige una app…", need: "Pon nombre y dirección", max: "Máximo 16 accesos",
           p: { weather: "Tiempo", tasks: "Tareas de hoy", exams: "Exámenes", files: "Mis archivos", pomodoro: "Pomodoro", apps: "Accesos", notes: "Notas" } },
     en: { title: "Customise the desktop", sub: "Changes show on the wallpaper right away.", panels: "Panels", color: "Colour", bg: "Animated background (particles)",
           apps: "Quick launch", hint: "A website (e.g. moodle.myuni.edu) or the path of a program or folder on this PC.", focus: "Focus", brk: "Break",
-          add: "Add", icon: "Change icon", pickT: "Pick an icon", emojiPh: "or paste an emoji 📚", reset: "Original icon", name: "Name", url: "Website or program", saved: "Saved", choose: "Pick an app…", need: "Add a name and an address", max: "16 shortcuts at most",
+          upd: "Updates", updBtn: "Check for updates", updHint: "ZAR updates itself every few hours. This button does it now.",
+          ver: "Version", checking: "checking…", add: "Add", icon: "Change icon", pickT: "Pick an icon", emojiPh: "or paste an emoji 📚", reset: "Original icon", name: "Name", url: "Website or program", saved: "Saved", choose: "Pick an app…", need: "Add a name and an address", max: "16 shortcuts at most",
           p: { weather: "Weather", tasks: "Today's tasks", exams: "Exams", files: "My files", pomodoro: "Pomodoro", apps: "Quick launch", notes: "Notes" } },
   };
   const ICON_SET = {
@@ -210,6 +216,18 @@
   };
   $("p-save").onclick = () => save({ pomo: [+$("p-f").value || 25, +$("p-b").value || 5] });
 
+  async function updStatus() {
+    try {
+      const s = await (await fetch(BASE + "/update", { headers: AUTH, cache: "no-store" })).json();
+      $("upd-info").textContent = `${L.ver} ${s.version}` + (s.remote ? ` · GitHub: ${s.remote}` : "") + (s.checking ? ` · ${L.checking}` : s.last ? ` · ${s.last}` : "");
+      return s;
+    } catch { $("upd-info").textContent = "ZAR?"; }
+  }
+  $("upd-btn").onclick = async () => {
+    try { await fetch(BASE + "/update", { method: "POST", headers: AUTH }); } catch {}
+    note(L.checking); let n = 0;
+    const iv = setInterval(async () => { const s = await updStatus(); if (++n > 60 || (s && !s.checking && n > 2)) clearInterval(iv); }, 2000);
+  };
   async function init() {
     try { const s = await (await fetch(BASE + "/state", { cache: "no-store" })).json(); if (s.lang === "en") L = TX.en; } catch {}
     document.documentElement.lang = L === TX.en ? "en" : "es";
@@ -217,6 +235,7 @@
     $("t-bg").textContent = L.bg; $("t-apps").textContent = L.apps; $("t-hint").textContent = L.hint; $("t-focus").textContent = L.focus; $("t-break").textContent = L.brk;
     $("add-preset").textContent = L.add; $("add-custom").textContent = L.add; $("c-name").placeholder = L.name; $("c-url").placeholder = L.url;
     document.title = "ZAR · " + L.title;
+    $("t-upd").textContent = L.upd; $("upd-btn").textContent = L.updBtn; $("t-updhint").textContent = L.updHint; updStatus();
     $("pick-title").textContent = L.pickT; $("emoji").placeholder = L.emojiPh; $("pick-reset").textContent = L.reset;
     try { d = await (await fetch(BASE + "/desktop", { headers: AUTH, cache: "no-store" })).json(); } catch { d = null; }
     if (d && d.ok) render(); else note("ZAR?");

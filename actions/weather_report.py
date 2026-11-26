@@ -30,7 +30,7 @@ def weather_action(
         _log(msg, player)
         return msg
 
-    msg = f"Showing the weather for {city}, {when}, sir."
+    msg = f"Showing the weather for {city}, {when}."
     _log(msg, player)
 
     if session_memory:
