@@ -70,7 +70,13 @@ if [ "$MAJOR" -lt 13 ]; then
 else
   : > "$CONS"
 fi
-UVI=("$UV" pip install --python "$PY" -c "$CONS" --only-binary PyQt6 --only-binary PyQt6-Qt6 --only-binary PyQt6-sip)
+# --only-binary :all: = never compile anything: uv picks the newest version that has a ready-made
+# package for THIS Mac (older macOS / Intel get older versions automatically).
+UVI=("$UV" pip install --python "$PY" -c "$CONS" --only-binary :all:)
+# the core first: without these nothing works
+say "Instalando el núcleo..."
+"${UVI[@]}" numpy sounddevice PyQt6 google-genai requests psutil pillow \
+  || "${UVI[@]}" numpy sounddevice PyQt6 google-genai
 "${UVI[@]}" webrtcvad-wheels scipy librosa
 "${UVI[@]}" torch || say "(El reconocimiento de voz del dueño no está disponible en este Mac; todo lo demás sí.)"
 "${UVI[@]}" resemblyzer --no-deps
