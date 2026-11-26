@@ -70,7 +70,7 @@ if [ "$MAJOR" -lt 13 ]; then
 else
   : > "$CONS"
 fi
-UVI=("$UV" pip install --python "$PY" -c "$CONS" --no-build-package PyQt6 --no-build-package PyQt6-Qt6 --no-build-package PyQt6-sip)
+UVI=("$UV" pip install --python "$PY" -c "$CONS" --only-binary PyQt6 --only-binary PyQt6-Qt6 --only-binary PyQt6-sip)
 "${UVI[@]}" webrtcvad-wheels scipy librosa
 "${UVI[@]}" torch || say "(El reconocimiento de voz del dueño no está disponible en este Mac; todo lo demás sí.)"
 "${UVI[@]}" resemblyzer --no-deps
