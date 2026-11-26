@@ -66,6 +66,25 @@ class DesktopWindow(NSWindow):
         return True
 
 
+class UIDelegate(NSObject):
+    """Lets the page open the file picker (folder "Mis archivos": «Subir archivos»)."""
+
+    def webView_runOpenPanelWithParameters_initiatedByFrame_completionHandler_(self, webview, params, frame, handler):
+        from AppKit import NSOpenPanel
+        NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        panel = NSOpenPanel.openPanel()
+        panel.setCanChooseFiles_(True)
+        panel.setCanChooseDirectories_(False)
+        try:
+            panel.setAllowsMultipleSelection_(bool(params.allowsMultipleSelection()))
+        except Exception:
+            panel.setAllowsMultipleSelection_(True)
+        if panel.runModal() == 1:            # NSModalResponseOK
+            handler(panel.URLs())
+        else:
+            handler(None)
+
+
 class Wallpaper(NSObject):
     def init(self):
         self = objc.super(Wallpaper, self).init()
@@ -73,6 +92,7 @@ class Wallpaper(NSObject):
             return None
         self.items = []
         self.loaded = False
+        self.ui = UIDelegate.alloc().init()
         return self
 
     def build(self):
@@ -90,6 +110,7 @@ class Wallpaper(NSObject):
             win.setReleasedWhenClosed_(False)
             view = WKWebView.alloc().initWithFrame_configuration_(
                 ((0, 0), (frame.size.width, frame.size.height)), WKWebViewConfiguration.alloc().init())
+            view.setUIDelegate_(self.ui)
             win.setContentView_(view)
             win.setFrame_display_(frame, True)
             win.orderFront_(None)
